@@ -71,6 +71,7 @@
     <div class="seg" role="group" aria-label="Start from" id="presets"></div>
     <span class="spacer"></span>
     <button class="btn" id="improve">Let the computer try</button>
+    <button class="btn" id="play-reset">Reset</button>
   </div>
 
   <div class="grid3">
@@ -103,6 +104,7 @@
     <span class="spacer"></span>
     <label class="slider" id="p-wrap">Prime p <input id="p" type="range" min="0" max="9" value="3" aria-label="Prime"> <span class="mono" id="p-v"></span></label>
     <button class="btn" id="redraw" hidden>New random dots</button>
+    <button class="btn" id="rec-reset">Reset</button>
   </div>
 
   <div class="sq-grid">
@@ -259,6 +261,13 @@ function setRecipe(kind) {
   kind === "parabola" ? recipeParabola() : recipeRandom(true);
 }
 $("p").addEventListener("input", recipeParabola);
+$("rec-reset").onclick = () => { $("p").value = "3"; R.base = null; R.removed = []; setRecipe("parabola"); };
+$("play-reset").onclick = () => {
+  if (S.running) return;
+  S.n = 8; $("n").value = "8"; $("n-v").textContent = S.n; S.best = {}; S.hoverTri = -1;
+  S.preset = "random"; S.P = S.home.map((p) => p.slice());
+  segButtons($("presets"), [["random", "Random"], ["grid", "Grid"], ["circle", "Circle"], ["parabola", "Parabola"]], S.preset, setPreset); updatePlay();
+};
 $("redraw").onclick = () => recipeRandom(true);
 
 /* ---------------- race ---------------- */
@@ -294,7 +303,7 @@ function renderRace() {
 
 /* ---------------- boot ---------------- */
 wireFold("proof-fold");
-$("n-v").textContent = S.n; setPreset("random"); setRecipe("parabola"); renderRace(); drawLine();
+$("n-v").textContent = S.n; setPreset("random"); S.home = S.P.map((p) => p.slice()); setRecipe("parabola"); renderRace(); drawLine();
 onResize(() => { updatePlay(); R.kind === "parabola" ? recipeParabola() : recipeRandom(false); drawLine(); });
 handshake();
 })();

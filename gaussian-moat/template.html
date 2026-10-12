@@ -111,6 +111,7 @@ input[type=checkbox] { accent-color: var(--primary); }
     <div class="chips" id="pchips"></div>
     <span class="spacer"></span>
     <label class="check"><input type="checkbox" id="showp" checked> circle real primes</label>
+    <button class="btn" id="sieve-reset">Reset</button>
   </div>
 
   <div class="grid2">
@@ -296,6 +297,7 @@ function updateSieve() {
   drawSieve();
 }
 $("showp").addEventListener("change", () => { SV.showP = $("showp").checked; drawSieve(); });
+$("sieve-reset").onclick = () => { SV.D2 = 1; SV.par = false; SV.ps = new Set([5]); SV.showP = true; $("showp").checked = true; updateSieve(); };
 
 /* ---------------- history ---------------- */
 const HIST = [

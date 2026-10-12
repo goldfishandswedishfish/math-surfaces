@@ -229,6 +229,7 @@ summary { cursor: pointer; color: var(--foreground); }
     <div class="seg" role="group" aria-label="Presets" id="presets"></div>
     <span class="spacer"></span>
     <label class="slider">Stretch <input id="stretch" type="range" min="-100" max="100" value="0" aria-label="Stretch horizontally"></label>
+    <button class="btn" id="play-reset">Reset</button>
   </div>
 
   <div class="pg">
@@ -279,7 +280,7 @@ summary { cursor: pointer; color: var(--foreground); }
       <button id="map-circle" aria-pressed="false">Plain circle</button>
     </div>
     <button class="btn" id="lens-play">Pause</button>
-    <button class="btn" id="lens-reset">Clear histogram</button>
+    <button class="btn" id="lens-reset">Reset</button>
   </div>
 
   <div class="lens">
@@ -510,6 +511,7 @@ function setMode(m) {
 }
 $("mode-sym").addEventListener("click", () => setMode("sym"));
 $("mode-gen").addEventListener("click", () => setMode("gen"));
+$("play-reset").addEventListener("click", () => { S.best = { sym: Infinity, gen: Infinity }; setMode("sym"); });
 $("stretch").addEventListener("input", (ev) => {
   const nv = +ev.target.value, f = Math.pow(2, (nv - S.stretch) / 100); S.stretch = nv;
   S.free = S.free.map(([x, y]) => [x * f, y]); updatePlay();
@@ -680,7 +682,11 @@ function resetHist() { L.bins.fill(0); L.n = 0; }
 $("map-lens").addEventListener("click", () => { L.map = "lens"; $("map-lens").setAttribute("aria-pressed", "true"); $("map-circle").setAttribute("aria-pressed", "false"); resetHist(); if (!L.playing) sample(4000); drawLens(); });
 $("map-circle").addEventListener("click", () => { L.map = "circle"; $("map-circle").setAttribute("aria-pressed", "true"); $("map-lens").setAttribute("aria-pressed", "false"); resetHist(); if (!L.playing) sample(4000); drawLens(); });
 $("lens-play").addEventListener("click", () => { L.playing = !L.playing; $("lens-play").textContent = L.playing ? "Pause" : "Play"; if (L.playing) loop(); });
-$("lens-reset").addEventListener("click", () => { resetHist(); drawLens(); });
+$("lens-reset").addEventListener("click", () => {
+  L.map = "lens"; L.theta = 0; $("map-lens").setAttribute("aria-pressed", "true"); $("map-circle").setAttribute("aria-pressed", "false");
+  resetHist(); L.playing = !reduceMotion; $("lens-play").textContent = L.playing ? "Pause" : "Play";
+  if (L.playing) loop(); else sample(4000); drawLens();
+});
 $("lens-play").textContent = L.playing ? "Pause" : "Play";
 let lensVisible = true;
 if ("IntersectionObserver" in window) new IntersectionObserver((es) => { lensVisible = es[0].isIntersecting; if (lensVisible && L.playing) loop(); }).observe($("trick"));

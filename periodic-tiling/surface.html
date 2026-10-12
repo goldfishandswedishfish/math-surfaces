@@ -197,6 +197,7 @@ details.more summary { cursor: pointer; color: var(--foreground); }
     <div class="cells" id="cells" role="group" aria-label="Tile cells"></div>
     <span class="spacer"></span>
     <div class="seg" role="group" aria-label="Examples" id="ex1"></div>
+    <button class="btn" id="line-reset">Reset</button>
   </div>
 
   <div class="grid2">
@@ -225,6 +226,7 @@ details.more summary { cursor: pointer; color: var(--foreground); }
     <div class="seg" role="group" aria-label="Base" id="pseg"></div>
     <span class="spacer"></span>
     <label class="slider">Try period M <input id="M" type="range" min="1" max="250" value="5" aria-label="Candidate period"> <span class="mono" id="M-v"></span></label>
+    <button class="btn" id="sudoku-reset">Reset</button>
   </div>
 
   <div class="grid2">
@@ -394,7 +396,9 @@ function updateSudoku() {
   segButtons($("pseg"), [[3, "3"], [5, "5"], [7, "7"]], SD.p, (p) => { SD.p = p; updateSudoku(); });
   SD.M = +$("M").value; $("M-v").textContent = SD.M; drawDigits(); drawWord();
 }
-$("M").addEventListener("input", updateSudoku); $("dd").addEventListener("input", drawWord); $("ee").addEventListener("input", drawWord);
+$("M").addEventListener("input", updateSudoku);
+$("sudoku-reset").onclick = () => { SD.p = 5; $("M").value = "5"; $("dd").value = "1"; $("ee").value = "3"; updateSudoku(); };
+$("line-reset").onclick = () => { T1.cells = new Set([0, 1, 4, 5]); updateLine(); }; $("dd").addEventListener("input", drawWord); $("ee").addEventListener("input", drawWord);
 
 /* ---------------- turntables (Blender renders) ---------------- */
 let TT = [];

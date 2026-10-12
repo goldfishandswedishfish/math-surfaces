@@ -194,6 +194,7 @@ details.more summary { cursor: pointer; color: var(--foreground); }
     <div class="seg" role="group" aria-label="Coloring" id="schemes"></div>
     <span class="spacer"></span>
     <label class="slider">Tile size <input id="size" type="range" min="0" max="1000" value="500" aria-label="Tile size"> <span class="mono" id="size-v"></span></label>
+    <button class="btn" id="explore-reset">Reset</button>
   </div>
 
   <div class="grid2">
@@ -224,6 +225,7 @@ details.more summary { cursor: pointer; color: var(--foreground); }
     <span class="swatches" id="swatches" role="group" aria-label="Brush color"></span>
     <span class="spacer"></span>
     <label class="slider">Tile width <input id="L" type="range" min="15" max="45" value="30" aria-label="Tile width"> <span class="mono" id="L-v"></span></label>
+    <button class="btn" id="paint-reset">Reset</button>
   </div>
 
   <div class="paint">
@@ -267,7 +269,7 @@ details.more summary { cursor: pointer; color: var(--foreground); }
       <button class="btn" id="sp-check">Check every possible coloring</button>
       <div class="note" id="sp-note">Hint: each diamond forces its far tip to match the hinge.</div>
       <div class="rule"></div>
-      <button class="btn" id="sp-clear">Clear</button>
+      <button class="btn" id="sp-clear">Reset</button>
     </div>
   </div>
   <p class="muted" style="margin-top:14px">In the proof's last move, a 3-color cycle forces a patch of the plane that uses only three colors. The paper places all seven spindle points inside that patch with exact coordinates. Since the spindle needs a fourth color, the patch can't exist.</p>
@@ -427,6 +429,7 @@ function renderSchemes() {
   });
 }
 $("size").addEventListener("input", () => updateExplore());
+$("explore-reset").onclick = () => { scheme = SCHEMES[0]; P.hover = null; $("size").value = String(Math.round(((scheme.def - scheme.min) / (scheme.max - scheme.min)) * 1000)); renderSchemes(); updateExplore(); };
 function hoverPlane(ev) {
   const cv = $("cvPlane"), r = cv.getBoundingClientRect(), v = planeView(r.width);
   P.hover = [v.ix(ev.clientX - r.left), v.iy(ev.clientY - r.top, r.height)];
@@ -500,6 +503,12 @@ $("cvTile").addEventListener("pointermove", (ev) => { if (T.painting) paintAt(ev
 $("cvTile").addEventListener("pointerup", () => { T.painting = false; });
 $("cvWall").addEventListener("pointermove", (ev) => { const r = $("cvWall").getBoundingClientRect(), units = Math.max(T.L * 2.2, 6), sc = r.width / units; T.hover = [(ev.clientX - r.left - r.width / 2) / sc, (r.height / 2 - (ev.clientY - r.top)) / sc]; drawWall(); });
 $("L").addEventListener("input", () => { T.L = +$("L").value / 10; $("L-v").textContent = T.L.toFixed(1); buildWeights(); T.best = {}; updatePaint(); });
+const P_NOTE = $("p-note").textContent;
+$("paint-reset").onclick = () => {
+  if (T.running) return;
+  T.k = 5; T.brush = 0; T.hover = null; T.best = {}; $("L").value = "30"; T.L = 3; $("L-v").textContent = T.L.toFixed(1); buildWeights();
+  $("p-note").textContent = P_NOTE; $("p-stripes").click(); renderPaintControls();
+};
 $("p-random").onclick = () => { const r = rng(Date.now()); for (let i = 0; i < G * G; i++) T.cells[i] = Math.floor(r() * T.k); updatePaint(); };
 $("p-stripes").onclick = () => { const per = Math.max(1, Math.round(G / T.k)); for (let i = 0; i < G * G; i++) T.cells[i] = Math.floor((i % G) / per) % T.k; updatePaint(); };
 $("p-improve").onclick = () => {
@@ -541,7 +550,7 @@ $("cvSp").addEventListener("pointerdown", (ev) => {
   let best = -1, bd = 20; SP.pts.forEach((p, i) => { const d = Math.hypot(v.X(p[0]) - x, v.Y(p[1]) - y); if (d < bd) { bd = d; best = i; } });
   if (best >= 0) { SP.col[best] = SP.col[best] + 1 >= SP.k ? -1 : SP.col[best] + 1; drawSpindle(); }
 });
-$("sp-clear").onclick = () => { SP.col.fill(-1); drawSpindle(); };
+$("sp-clear").onclick = () => { SP.col.fill(-1); SP.k = 3; renderSpK(); $("sp-note").textContent = "Hint: each diamond forces its far tip to match the hinge."; drawSpindle(); };
 $("sp-check").onclick = () => {
   const k = SP.k, total = Math.pow(k, 7); let ok = 0;
   for (let m = 0; m < total; m++) { const c = []; let t = m; for (let i = 0; i < 7; i++) { c.push(t % k); t = Math.floor(t / k); } if (SP.edges.every(([a, b]) => c[a] !== c[b])) ok++; }
