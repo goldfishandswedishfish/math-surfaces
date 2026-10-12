@@ -381,7 +381,7 @@ $("origin").onclick = () => { M.start = [0, 0]; updateMap(true); };
 $("zin").onclick = () => { M.ppu = Math.min(24, M.ppu * 1.6); drawMap(); };
 $("zout").onclick = () => { M.ppu = Math.max(0.12, M.ppu / 1.6); drawMap(); };
 $("fit").onclick = () => { explore(); fitIsland(); drawMap(); };
-$("reset").onclick = () => { M.D2 = 10; M.start = null; updateMap(true); };
+$("reset").onclick = () => { M.D2 = 10; M.start = [0, 0]; Object.assign(M, M.home); updateMap(false); };
 const cvMap = $("cvMap");
 cvMap.addEventListener("pointerdown", (ev) => { M.drag = { x: ev.clientX, y: ev.clientY, cx: M.cx, cy: M.cy, moved: false }; cvMap.setPointerCapture(ev.pointerId); });
 cvMap.addEventListener("pointermove", (ev) => { if (!M.drag) return; const dx = ev.clientX - M.drag.x, dy = ev.clientY - M.drag.y; if (Math.abs(dx) + Math.abs(dy) > 4) M.drag.moved = true; if (M.drag.moved) { M.cx = M.drag.cx - dx / M.ppu; M.cy = M.drag.cy + dy / M.ppu; drawMap(); } });
@@ -455,7 +455,7 @@ const HIST = [
 function renderHist() { const tb = $("hist"); tb.textContent = ""; HIST.forEach(([y, who, what]) => { const tr = document.createElement("tr"); [y, who, what].forEach((t, i) => { const td = document.createElement("td"); td.textContent = t; if (i === 0) td.className = "mono"; tr.appendChild(td); }); tb.appendChild(tr); }); }
 
 /* ---------------- boot ---------------- */
-wireFold("proof-fold"); renderHist(); updateMap(true); updateSieve();
+wireFold("proof-fold"); renderHist(); updateMap(true); M.home = { cx: M.cx, cy: M.cy, ppu: M.ppu }; updateSieve();
 onResize(() => { drawMap(); drawSieve(); });
 handshake();
 })();
