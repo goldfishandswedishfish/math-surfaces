@@ -78,6 +78,7 @@ input[type=checkbox] { accent-color: var(--primary); }
     <button class="btn" id="zout" aria-label="Zoom out">−</button>
     <button class="btn" id="zin" aria-label="Zoom in">+</button>
     <button class="btn" id="fit">Fit island</button>
+    <button class="btn" id="reset">Reset</button>
   </div>
 
   <div class="grid2">
@@ -227,6 +228,7 @@ $("origin").onclick = () => { M.start = [0, 0]; updateMap(true); };
 $("zin").onclick = () => { M.ppu = Math.min(24, M.ppu * 1.6); drawMap(); };
 $("zout").onclick = () => { M.ppu = Math.max(0.12, M.ppu / 1.6); drawMap(); };
 $("fit").onclick = () => { fitIsland(); drawMap(); };
+$("reset").onclick = () => { M.D2 = 10; M.start = [0, 0]; updateMap(true); };
 const cvMap = $("cvMap");
 cvMap.addEventListener("pointerdown", (ev) => { M.drag = { x: ev.clientX, y: ev.clientY, cx: M.cx, cy: M.cy, moved: false }; cvMap.setPointerCapture(ev.pointerId); });
 cvMap.addEventListener("pointermove", (ev) => { if (!M.drag) return; const dx = ev.clientX - M.drag.x, dy = ev.clientY - M.drag.y; if (Math.abs(dx) + Math.abs(dy) > 4) M.drag.moved = true; if (M.drag.moved) { M.cx = M.drag.cx - dx / M.ppu; M.cy = M.drag.cy + dy / M.ppu; drawMap(); } });
