@@ -11,10 +11,14 @@
 .cells button[aria-pressed="true"] { background: var(--primary); color: var(--card); border-color: var(--primary); }
 #cvStrip { aspect-ratio: auto; height: 96px; }
 #cvWord { aspect-ratio: auto; height: 64px; }
-#cv3d { cursor: grab; }
-#cv3d:active { cursor: grabbing; }
-.three { display: grid; grid-template-columns: minmax(0, 1fr) 260px; gap: 12px; }
-@media (max-width: 860px) { .three { grid-template-columns: 1fr; } }
+.tt-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 14px; }
+.tt { padding: 10px; }
+.tt .cap { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin-bottom: 4px; }
+.tt .view { position: relative; aspect-ratio: 1/1; cursor: grab; user-select: none; -webkit-user-select: none; touch-action: pan-y; }
+.tt .view:active { cursor: grabbing; }
+.tt img { width: 100%; height: 100%; object-fit: contain; display: block; pointer-events: none; }
+.tt .hint { position: absolute; bottom: 4px; left: 0; right: 0; text-align: center; font-size: 12px; color: var(--faint-foreground); }
+@media (max-width: 520px) { .tt-grid { grid-template-columns: 1fr; } }
 </style>
 </head>
 <body>
@@ -129,24 +133,11 @@
 <!-- ============ 3. 3D ============ -->
 <section id="space">
   <h2>What a 3D tiling by slides looks like</h2>
-  <p>Here is a small 3D tile: one cube with three neighbors, like the corner of a box. Copies of it, only slid and never turned, fill space perfectly, in a repeating pattern. Pull them apart to see how they interlock, and drag to turn the view.</p>
+  <p>Here is a small 3D tile: one cube with three neighbors, like the corner of a box. Copies of it, only slid and never turned, fill space perfectly, in a repeating pattern. On the left they are pulled apart so you can see each piece; on the right they are pushed together. Drag either view to turn it.</p>
   <p class="muted">This tile is an illustration. The 2026 counterexample is built the same way from unit cubes, but with an enormous number of them, and no arrangement of its copies ever repeats in all three directions.</p>
-  <div class="toolbar">
-    <label class="slider">Pull apart <input id="ex" type="range" min="0" max="100" value="35" aria-label="Explode"></label>
-    <label class="slider">Block size <input id="bs" type="range" min="2" max="5" value="4" aria-label="Block size"> <span class="mono" id="bs-v"></span></label>
-    <span class="spacer"></span>
-    <button class="btn" id="spin">Pause</button>
-  </div>
-  <div class="three">
-    <div class="card panel"><div class="cap"><span class="label">Copies of one tile filling a block</span><span class="label faint">drag to rotate</span></div><canvas id="cv3d" class="wide"></canvas></div>
-    <div class="card readout">
-      <div class="kv"><span class="label">Cubes per tile</span><span class="mono">4</span></div>
-      <div class="kv"><span class="label">Copies shown</span><span class="mono" id="t-n">–</span></div>
-      <div class="kv"><span class="label">Repeats every</span><span class="mono">4 steps</span></div>
-      <div class="rule"></div>
-      <p class="note" style="max-width:none">The copies sit at grid points where x + 2y + 3z is a multiple of 4. The tile's four cubes land on remainders 0, 1, 2 and 3, so every cube of space is covered exactly once. Rules like this are why small tiles always seem to repeat. The counterexample has to defeat every such rule.</p>
-    </div>
-  </div>
+  <div class="tt-grid" id="tt-grid"></div>
+  <p class="note" style="margin-top:12px">The copies sit at grid points where x + 2y + 3z is a multiple of 4. The tile's four cubes land on remainders 0, 1, 2 and 3, so every cube of space is covered exactly once, and the pattern repeats every 4 steps. Rules like this are why small tiles always seem to repeat. The counterexample has to defeat every such rule.</p>
+  <p class="label" style="margin-top:6px">Rendered in Blender: 16 copies, one for each anchor point in a 4 × 4 × 4 block, so the edges are ragged.</p>
 </section>
 
 <!-- ============ 4. LADDER ============ -->
@@ -159,9 +150,10 @@
 </section>
 
 <section>
-  <p class="sources">Source: <code>openai/math</code>, family 155, "A translational tile with no fully periodic tiling in dimension three" (Sept 23, 2026). The repository reports a Lean formalization, including that three is the least lattice dimension (<code>lean/docs/155.md</code>). Line tilings are found by exhaustive search up to Newman's period bound. The 3D tile shown is an illustration, not the counterexample.</p>
+  <p class="sources">Source: <code>openai/math</code>, family 155, "A translational tile with no fully periodic tiling in dimension three" (Sept 23, 2026). The repository reports a Lean formalization, including that three is the least lattice dimension (<code>lean/docs/155.md</code>). Line tilings are found by exhaustive search up to Newman's period bound. The 3D tile shown is an illustration, not the counterexample; its views were rendered in Blender.</p>
 </section>
 
+<script id="tt-data" type="application/json">/*TURNTABLES*/</script>
 <script>
 (function () {
 "use strict";
@@ -258,48 +250,30 @@ function updateSudoku() {
 }
 $("M").addEventListener("input", updateSudoku); $("dd").addEventListener("input", drawWord); $("ee").addEventListener("input", drawWord);
 
-/* ---------------- 3D tiling ---------------- */
-const TD = { yaw: 0.7, pitch: 0.55, ex: 0.35, B: 4, spin: true, drag: null, copies: [] };
-const TILE = [[0, 0, 0], [1, 0, 0], [0, 1, 0], [0, 0, 1]];
-function buildCopies() {
-  const B = TD.B, out = [];
-  for (let a = 0; a < B; a++) for (let b = 0; b < B; b++) for (let c = 0; c < B; c++) {
-    if (mod(a + 2 * b + 3 * c, 4)) continue;
-    out.push({ base: [a, b, c], cubes: TILE.map(([x, y, z]) => [a + x, b + y, c + z]) });
-  }
-  TD.copies = out; $("t-n").textContent = String(out.length); $("bs-v").textContent = B + "³";
+/* ---------------- turntables (Blender renders) ---------------- */
+let TT = [];
+try { const raw = $("tt-data").textContent.trim(); TT = raw.startsWith("[") ? JSON.parse(raw) : []; } catch (e) { TT = []; }
+const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+if (!TT.length) $("tt-grid").hidden = true;
+for (const t of TT) {
+  const card = document.createElement("div"); card.className = "card tt";
+  const cap = document.createElement("div"); cap.className = "cap";
+  const l = document.createElement("span"); l.className = "label"; l.textContent = t.title;
+  const r = document.createElement("span"); r.className = "label faint"; r.textContent = t.tag;
+  cap.append(l, r);
+  const v = document.createElement("div"); v.className = "view"; v.setAttribute("role", "slider"); v.setAttribute("aria-label", t.title + ", drag to rotate"); v.tabIndex = 0;
+  const img = document.createElement("img"); img.alt = t.title; img.src = t.frames[0]; img.draggable = false;
+  const hint = document.createElement("div"); hint.className = "hint"; hint.textContent = "drag to rotate";
+  v.append(img, hint); card.append(cap, v); $("tt-grid").appendChild(card);
+  t.frames.forEach((src) => { const im = new Image(); im.src = src; });
+  let f = 0, startX = 0, startF = 0, dragging = false, auto = !reduceMotion;
+  const show = (k) => { f = mod(Math.round(k), t.frames.length); img.src = t.frames[f]; };
+  v.addEventListener("pointerdown", (e) => { dragging = true; auto = false; hint.hidden = true; startX = e.clientX; startF = f; v.setPointerCapture(e.pointerId); });
+  v.addEventListener("pointermove", (e) => { if (dragging) show(startF - (e.clientX - startX) / 8); });
+  v.addEventListener("pointerup", () => { dragging = false; });
+  v.addEventListener("keydown", (e) => { if (e.key === "ArrowLeft") { auto = false; show(f - 1); } if (e.key === "ArrowRight") { auto = false; show(f + 1); } });
+  if (auto) { let last = 0; const tick = (ts) => { if (!auto) return; if (ts - last > 110) { last = ts; show(f + 1); } requestAnimationFrame(tick); }; requestAnimationFrame(tick); }
 }
-function draw3d() {
-  const { ctx, w, h } = fitCanvas($("cv3d")), B = TD.B, cy = Math.cos(TD.yaw), sy = Math.sin(TD.yaw), cp = Math.cos(TD.pitch), sp = Math.sin(TD.pitch);
-  const sc = Math.min(w, h) / (B * (1.9 + TD.ex * 1.6)), ctr = (B - 1) / 2 + 0.5;
-  const rot = ([x, y, z]) => { const X = x - ctr, Y = y - ctr, Z = z - ctr, x1 = cy * X - sy * Y, y1 = sy * X + cy * Y; return [x1, cp * y1 - sp * Z, sp * y1 + cp * Z]; };
-  const proj = (v) => { const r = rot(v); return [w / 2 + r[0] * sc, h / 2 - r[2] * sc, r[1]]; };
-  const P = pal(), faces = [];
-  const FACES = [[[0, 0, 0], [1, 0, 0], [1, 1, 0], [0, 1, 0], [0, 0, -1]], [[0, 0, 1], [1, 0, 1], [1, 1, 1], [0, 1, 1], [0, 0, 1]], [[0, 0, 0], [1, 0, 0], [1, 0, 1], [0, 0, 1], [0, -1, 0]], [[0, 1, 0], [1, 1, 0], [1, 1, 1], [0, 1, 1], [0, 1, 0]], [[0, 0, 0], [0, 1, 0], [0, 1, 1], [0, 0, 1], [-1, 0, 0]], [[1, 0, 0], [1, 1, 0], [1, 1, 1], [1, 0, 1], [1, 0, 0]]];
-  const light = rot([0.3, -0.6, 0.75]); const viewDir = [0, 1, 0];
-  TD.copies.forEach((cp0, ci) => {
-    const cen = cp0.cubes.reduce((s, c) => [s[0] + c[0] / 4, s[1] + c[1] / 4, s[2] + c[2] / 4], [0, 0, 0]), off = [(cen[0] + 0.5 - ctr) * TD.ex * 1.4, (cen[1] + 0.5 - ctr) * TD.ex * 1.4, (cen[2] + 0.5 - ctr) * TD.ex * 1.4];
-    const set = new Set(cp0.cubes.map((c) => c.join()));
-    cp0.cubes.forEach((c) => FACES.forEach((f) => {
-      const nb = [c[0] + f[4][0], c[1] + f[4][1], c[2] + f[4][2]]; if (set.has(nb.join())) return; // internal face of this tile
-      const n = rot(f[4]); const nr = [n[0], n[1], n[2]]; if (nr[1] > 0) return; // back-facing (viewer at -y)
-      const pts = f.slice(0, 4).map((q) => proj([c[0] + q[0] + off[0], c[1] + q[1] + off[1], c[2] + q[2] + off[2]]));
-      const depth = pts.reduce((s, q) => s + q[2], 0) / 4, shade = 0.62 + 0.38 * Math.max(0, -(nr[0] * light[0] + nr[1] * light[1] + nr[2] * light[2]));
-      faces.push({ pts, depth, col: P[ci % P.length], shade });
-    }));
-  });
-  faces.sort((a, b) => b.depth - a.depth);
-  faces.forEach((f) => { ctx.beginPath(); f.pts.forEach((q, i) => (i ? ctx.lineTo(q[0], q[1]) : ctx.moveTo(q[0], q[1]))); ctx.closePath(); ctx.fillStyle = f.col; ctx.fill(); ctx.fillStyle = `rgba(0,0,0,${(1 - f.shade).toFixed(3)})`; ctx.fill(); ctx.strokeStyle = dark.matches ? "rgba(0,0,0,0.55)" : "rgba(0,0,0,0.25)"; ctx.lineWidth = 1; ctx.stroke(); });
-}
-let last = 0;
-function loop(t) { if (TD.spin && !TD.drag && !matchMedia("(prefers-reduced-motion: reduce)").matches) { TD.yaw += Math.min(50, t - last) * 0.0003; draw3d(); } last = t; requestAnimationFrame(loop); }
-const cv3 = $("cv3d");
-cv3.addEventListener("pointerdown", (ev) => { TD.drag = { x: ev.clientX, y: ev.clientY, yaw: TD.yaw, pitch: TD.pitch }; cv3.setPointerCapture(ev.pointerId); });
-cv3.addEventListener("pointermove", (ev) => { if (!TD.drag) return; TD.yaw = TD.drag.yaw - (ev.clientX - TD.drag.x) * 0.01; TD.pitch = Math.max(-1.2, Math.min(1.4, TD.drag.pitch + (ev.clientY - TD.drag.y) * 0.01)); draw3d(); });
-cv3.addEventListener("pointerup", () => { TD.drag = null; });
-$("ex").addEventListener("input", () => { TD.ex = +$("ex").value / 100; draw3d(); });
-$("bs").addEventListener("input", () => { TD.B = +$("bs").value; buildCopies(); draw3d(); });
-$("spin").onclick = () => { TD.spin = !TD.spin; $("spin").textContent = TD.spin ? "Pause" : "Spin"; };
 
 /* ---------------- ladder ---------------- */
 const LADDER = [
@@ -312,8 +286,8 @@ const LADDER = [
 function renderLadder() { const tb = $("ladder-t"); tb.textContent = ""; LADDER.forEach((r) => { const tr = document.createElement("tr"); r.forEach((t, i) => { const td = document.createElement("td"); td.textContent = t; if (i === 2) td.className = "label"; tr.appendChild(td); }); tb.appendChild(tr); }); }
 
 /* ---------------- boot ---------------- */
-wireFold("proof-fold"); renderLadder(); updateLine(); updateSudoku(); buildCopies(); draw3d(); requestAnimationFrame(loop);
-onResize(() => { drawStrip(); drawDigits(); drawWord(); draw3d(); });
+wireFold("proof-fold"); renderLadder(); updateLine(); updateSudoku();
+onResize(() => { drawStrip(); drawDigits(); drawWord(); });
 handshake();
 })();
 </script>
