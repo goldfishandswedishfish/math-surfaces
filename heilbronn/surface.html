@@ -276,7 +276,7 @@ function fitCanvas(cv) {
   const r = cv.getBoundingClientRect(), d = window.devicePixelRatio || 1;
   const w = Math.max(10, Math.round(r.width * d)), h = Math.max(10, Math.round(r.height * d));
   if (cv.width !== w || cv.height !== h) { cv.width = w; cv.height = h; }
-  const ctx = cv.getContext("2d"); ctx.setTransform(d, 0, 0, d, 0, 0);
+  const ctx = cv.getContext("2d"); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, cv.width, cv.height); ctx.setTransform(d, 0, 0, d, 0, 0);
   return { ctx, w: r.width, h: r.height, d };
 }
 const mix = (color, a) => `color-mix(in srgb, ${color} ${Math.round(a * 100)}%, transparent)`;

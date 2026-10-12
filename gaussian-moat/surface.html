@@ -278,7 +278,7 @@ function fitCanvas(cv) {
   const r = cv.getBoundingClientRect(), d = window.devicePixelRatio || 1;
   const w = Math.max(10, Math.round(r.width * d)), h = Math.max(10, Math.round(r.height * d));
   if (cv.width !== w || cv.height !== h) { cv.width = w; cv.height = h; }
-  const ctx = cv.getContext("2d"); ctx.setTransform(d, 0, 0, d, 0, 0);
+  const ctx = cv.getContext("2d"); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, cv.width, cv.height); ctx.setTransform(d, 0, 0, d, 0, 0);
   return { ctx, w: r.width, h: r.height, d };
 }
 const mix = (color, a) => `color-mix(in srgb, ${color} ${Math.round(a * 100)}%, transparent)`;
@@ -306,6 +306,7 @@ const fmtZ = (a, b) => (a === 0 && b === 0 ? "0" : b === 0 ? String(a) : a === 0
 const DS = [[2, "√2"], [4, "2"], [8, "√8"], [10, "√10"], [16, "4"], [26, "√26"]];
 const M = { D2: 10, start: [0, 0], comp: new Uint8Array(W * W), n: 0, far: 0, esc: false, cx: 0, cy: 0, ppu: 0.5, bbox: null, drag: null };
 function explore() {
+  if (!M.start) { M.comp.fill(0); M.n = 0; M.far = 0; M.esc = false; M.bbox = [-60, -35, 60, 35]; return; }
   const D2 = M.D2, r = Math.floor(Math.sqrt(D2)), O = [];
   for (let dx = -r; dx <= r; dx++) for (let dy = -r; dy <= r; dy++) if ((dx || dy) && dx * dx + dy * dy <= D2) O.push(dx, dy);
   M.comp.fill(0); const st = [M.start[0], M.start[1]]; let n = 0, far = 0, esc = false, x0 = M.start[0], x1 = x0, y0 = M.start[1], y1 = y0;
@@ -348,7 +349,7 @@ function drawMap() {
     }
   }
   // start marker
-  ctx.strokeStyle = C.fg; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(X(M.start[0]), Y(M.start[1]), 7, 0, 7); ctx.stroke();
+  if (M.start) { ctx.strokeStyle = C.fg; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(X(M.start[0]), Y(M.start[1]), 7, 0, 7); ctx.stroke(); }
   // limit box
   ctx.setLineDash([4, 4]); ctx.strokeStyle = C.faint; ctx.strokeRect(X(-LIM), Y(LIM), 2 * LIM * ppu, 2 * LIM * ppu); ctx.setLineDash([]);
   // scale
@@ -361,20 +362,26 @@ function parseColor(c) { const cv = document.createElement("canvas"); cv.width =
 function updateMap(refit) {
   explore(); if (refit) fitIsland(); drawMap();
   const dl = DS.find((x) => x[0] === M.D2)[1];
-  $("m-start").textContent = fmtZ(M.start[0], M.start[1]); $("m-d").textContent = dl;
+  segButtons($("dseg"), DS, M.D2, (v) => { M.D2 = v; updateMap(!!M.start); });
+  $("m-d").textContent = dl;
+  if (!M.start) {
+    ["m-start", "m-n", "m-far"].forEach((id) => ($(id).textContent = "–"));
+    $("m-note").textContent = "Click any dot to see every prime you could reach from it, or start at the origin.";
+    return;
+  }
+  $("m-start").textContent = fmtZ(M.start[0], M.start[1]);
   $("m-n").textContent = M.esc ? "> " + M.n.toLocaleString() : M.n.toLocaleString();
   $("m-far").textContent = M.far.toFixed(1);
   const note = $("m-note"); note.textContent = ""; const b = document.createElement("b");
   if (M.esc) { b.textContent = "Ran off the edge of this map. "; note.append(b, "The island reaches past 1,500 in some direction, beyond what this page explores. Computer searches show walks from the origin are still trapped for steps up to 6, and the 2026 theorem says every island is finite for every step limit."); }
   else if (M.n <= 1) { b.textContent = "Stranded at once. "; note.append(b, "No other prime is within reach."); }
   else { b.textContent = "Trapped. "; note.append(b, "That's every prime reachable from here. Around the island lies a moat wider than " + dl + " with no Gaussian primes in it."); }
-  segButtons($("dseg"), DS, M.D2, (v) => { M.D2 = v; updateMap(true); });
 }
 $("origin").onclick = () => { M.start = [0, 0]; updateMap(true); };
 $("zin").onclick = () => { M.ppu = Math.min(24, M.ppu * 1.6); drawMap(); };
 $("zout").onclick = () => { M.ppu = Math.max(0.12, M.ppu / 1.6); drawMap(); };
-$("fit").onclick = () => { fitIsland(); drawMap(); };
-$("reset").onclick = () => { M.D2 = 10; M.start = [0, 0]; updateMap(true); };
+$("fit").onclick = () => { explore(); fitIsland(); drawMap(); };
+$("reset").onclick = () => { M.D2 = 10; M.start = null; updateMap(true); };
 const cvMap = $("cvMap");
 cvMap.addEventListener("pointerdown", (ev) => { M.drag = { x: ev.clientX, y: ev.clientY, cx: M.cx, cy: M.cy, moved: false }; cvMap.setPointerCapture(ev.pointerId); });
 cvMap.addEventListener("pointermove", (ev) => { if (!M.drag) return; const dx = ev.clientX - M.drag.x, dy = ev.clientY - M.drag.y; if (Math.abs(dx) + Math.abs(dy) > 4) M.drag.moved = true; if (M.drag.moved) { M.cx = M.drag.cx - dx / M.ppu; M.cy = M.drag.cy + dy / M.ppu; drawMap(); } });
