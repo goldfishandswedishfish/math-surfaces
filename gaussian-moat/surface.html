@@ -1,0 +1,455 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Gaussian moat</title>
+<style>
+:root {
+  color-scheme: light dark;
+  --background: #f5f5f5;
+  --foreground: #141414;
+  --card: #ffffff;
+  --muted: #f2f2f2;
+  --muted-foreground: #6b6b6b;
+  --faint-foreground: #808080;
+  --border: #e3e3e3;
+  --border-strong: #dbdbdb;
+  --hairline: rgb(0 0 0 / 0.07);
+  --accent: rgb(0 0 0 / 0.03);
+  --primary: oklch(0.50 0.15 278);
+  --destructive: #cf4415;
+  --success: #4b7c0b;
+  --radius: 0.625rem;
+  --mono: ui-monospace, "Berkeley Mono", SFMono-Regular, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #141414;
+    --foreground: #e2e2e2;
+    --card: #262626;
+    --muted: #111111;
+    --muted-foreground: #a0a0a0;
+    --faint-foreground: #737373;
+    --border: #202020;
+    --border-strong: #242424;
+    --hairline: rgb(226 226 226 / 0.06);
+    --accent: rgb(255 255 255 / 0.03);
+    --primary: oklch(0.68 0.14 278);
+    --destructive: #f0663a;
+    --success: #8fc24a;
+  }
+}
+[hidden] { display: none !important; }
+* { box-sizing: border-box; }
+html, body { margin: 0; background: transparent; }
+body { font-family: Inter, ui-sans-serif, system-ui, sans-serif; font-size: 14px; line-height: 1.55; color: var(--foreground); -webkit-font-smoothing: antialiased; }
+h2 { font-size: 18px; font-weight: 400; letter-spacing: -0.015em; margin: 0 0 6px; }
+p { margin: 0 0 10px; max-width: 72ch; }
+.muted { color: var(--muted-foreground); }
+.faint { color: var(--faint-foreground); }
+.mono { font-family: var(--mono); font-size: 13px; }
+.label { font-size: 12px; color: var(--muted-foreground); }
+em { font-style: normal; color: var(--primary); }
+.bad { color: var(--destructive); }
+.good { color: var(--success); }
+section { padding: 28px 0; border-top: 1px solid var(--hairline); }
+section:first-of-type { border-top: 0; padding-top: 4px; }
+.card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); }
+
+.toolbar { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 14px 0 12px; }
+.seg { display: inline-flex; flex-wrap: wrap; border: 1px solid var(--border-strong); border-radius: 5px; overflow: hidden; }
+.seg button + button { border-left: 1px solid var(--border-strong); }
+button { font: inherit; font-size: 13px; color: var(--foreground); background: var(--card); border: 0; padding: 4px 10px; cursor: pointer; }
+button:hover { background: var(--accent); }
+button[aria-pressed="true"] { background: var(--muted); color: var(--primary); }
+.btn { border: 1px solid var(--border-strong); border-radius: 5px; }
+button:focus-visible, input:focus-visible { outline: 2px solid var(--primary); outline-offset: 1px; }
+.spacer { flex: 1; }
+.slider { display: inline-flex; gap: 8px; align-items: center; font-size: 13px; color: var(--muted-foreground); }
+input[type=range] { accent-color: var(--primary); width: 140px; }
+
+.lede { font-size: 16px; letter-spacing: -0.01em; max-width: 68ch; margin-bottom: 18px; }
+.why { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.why .card { padding: 14px; }
+.why h3, .step h3 { font-size: 13px; font-weight: 500; margin: 0 0 4px; }
+.why p { font-size: 13px; color: var(--muted-foreground); margin: 0; }
+.steps { list-style: none; margin: 10px 0 0; padding: 0; border-top: 1px solid var(--hairline); }
+.step { display: grid; grid-template-columns: 28px minmax(0, 1.5fr) minmax(0, 1fr); gap: 4px 16px; padding: 12px 0; border-bottom: 1px solid var(--hairline); }
+.step .n { font-family: var(--mono); font-size: 13px; color: var(--primary); padding-top: 1px; }
+.step p { font-size: 13px; margin: 0; }
+.step .term { font-family: var(--mono); font-size: 12px; color: var(--muted-foreground); line-height: 1.5; }
+.step .see { font-size: 12px; color: var(--primary); margin-top: 4px; }
+.aside { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin-top: 18px; }
+.aside p { font-size: 13px; color: var(--muted-foreground); margin: 0; }
+.aside h3 { font-size: 12px; font-weight: 400; margin: 0 0 4px; }
+
+details.fold { margin: 22px 0 0; border-top: 1px solid var(--hairline); border-bottom: 1px solid var(--hairline); }
+details.fold > summary { list-style: none; display: flex; align-items: center; gap: 10px; padding: 12px 0; cursor: pointer; user-select: none; }
+details.fold > summary::-webkit-details-marker { display: none; }
+details.fold > summary:hover { background: var(--accent); }
+.fold-title { font-size: 18px; letter-spacing: -0.015em; }
+.fold-hint { margin-left: auto; font-size: 12px; color: var(--muted-foreground); }
+.chev { width: 7px; height: 7px; border-right: 1.5px solid var(--muted-foreground); border-bottom: 1.5px solid var(--muted-foreground); transform: rotate(-45deg); margin: 0 2px; flex: none; }
+details.fold[open] .chev { transform: rotate(45deg); }
+details.fold[open] { padding-bottom: 18px; }
+@media (prefers-reduced-motion: no-preference) { .chev { transition: transform 120ms; } }
+
+.panel { position: relative; padding: 10px; }
+.panel .cap { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin-bottom: 4px; }
+canvas { display: block; width: 100%; touch-action: none; }
+.square { aspect-ratio: 1 / 1; }
+.wide { aspect-ratio: 16 / 9; }
+.readout { padding: 12px; display: flex; flex-direction: column; gap: 10px; }
+.kv { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.big { font-family: var(--mono); font-size: 26px; letter-spacing: -0.02em; }
+.rule { height: 1px; background: var(--hairline); }
+.note { font-size: 13px; color: var(--muted-foreground); }
+.note b { font-weight: 500; color: var(--foreground); }
+.grid2 { display: grid; grid-template-columns: minmax(0, 1fr) 260px; gap: 12px; }
+.grid3 { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 260px; gap: 12px; }
+table { border-collapse: collapse; width: 100%; font-size: 13px; margin-top: 14px; }
+th { font-weight: 400; color: var(--muted-foreground); font-size: 12px; text-align: left; padding: 6px 10px; border-bottom: 1px solid var(--border); }
+td { padding: 6px 10px; border-bottom: 1px solid var(--hairline); vertical-align: top; }
+tr:hover td { background: var(--accent); }
+details.more { margin-top: 12px; font-size: 13px; color: var(--muted-foreground); }
+details.more summary { cursor: pointer; color: var(--foreground); }
+.sources { font-size: 12px; color: var(--faint-foreground); }
+.sources code { font-family: var(--mono); font-size: 12px; }
+@media (max-width: 860px) {
+  .why, .aside { grid-template-columns: 1fr; }
+  .step { grid-template-columns: 28px minmax(0, 1fr); }
+  .step .term { grid-column: 2; }
+  .grid2 { grid-template-columns: 1fr; }
+  .grid3 { grid-template-columns: 1fr 1fr; }
+  .grid3 .readout { grid-column: 1 / -1; }
+}
+@media (max-width: 520px) { .grid3 { grid-template-columns: 1fr; } }
+
+#cvMap { cursor: grab; }
+#cvMap:active { cursor: grabbing; }
+.chips { display: inline-flex; flex-wrap: wrap; gap: 4px; }
+.chips button { border: 1px solid var(--border-strong); border-radius: 5px; font-family: var(--mono); font-size: 12px; }
+.legend { display: inline-flex; flex-wrap: wrap; gap: 14px; font-size: 12px; color: var(--muted-foreground); }
+.sw { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 5px; vertical-align: -1px; }
+.ring { display: inline-block; width: 9px; height: 9px; border-radius: 50%; border: 1.5px solid var(--foreground); margin-right: 5px; vertical-align: -1px; }
+.verdict { font-size: 15px; letter-spacing: -0.01em; }
+label.check { display: inline-flex; gap: 6px; align-items: center; font-size: 13px; color: var(--muted-foreground); cursor: pointer; }
+input[type=checkbox] { accent-color: var(--primary); }
+</style>
+</head>
+<body>
+
+<!-- ============ OVERVIEW ============ -->
+<section id="overview">
+  <p class="lede">Picture the "primes" of the flat plane as stepping stones scattered across an endless sea. Could you walk forever on them with steps of some fixed length, say 10? Or would you always end up stranded, surrounded by a <em>moat</em> too wide to jump? The question was asked in 1962. In September 2026, a proof produced by an OpenAI model settled it: <em>you are always stranded</em>, for every step length. Even the size of your island has a cap that depends only on the step length.</p>
+
+  <div class="why">
+    <div class="card">
+      <h3>The question</h3>
+      <p>Gaussian integers are grid points a + bi in the plane, and they have their own primes: points that can't be factored further. Pick a step limit D. Starting on any Gaussian prime, hop to other Gaussian primes, never more than D away, never revisiting. Can you go on forever?</p>
+    </div>
+    <div class="card">
+      <h3>Why it matters</h3>
+      <p>On the ordinary number line the answer is easy: there are arbitrarily long stretches with no primes, so a walker always gets stuck. In the plane you can walk around a gap, so gaps alone prove nothing. The problem, from Basil Gordon and Theodore Motzkin and popularized by Erdős, became a classic test of how primes are spread in two dimensions.</p>
+    </div>
+    <div class="card">
+      <h3>Why it was hard</h3>
+      <p>Computers could only check walks from one starting point at a time, and only for small steps. The farthest anyone reached from the origin with steps of 6 was a computational result. A proof has to handle every starting prime, every possible winding path, and every step length at once.</p>
+    </div>
+  </div>
+
+  <details class="fold" id="proof-fold">
+  <summary><span class="chev" aria-hidden="true"></span><span class="fold-title">How the proof works, in four moves</span><span class="fold-hint">show</span></summary>
+  <p class="muted" style="font-size:13px; margin-top:6px">Plain language is on the left, the paper's own terms on the right.</p>
+  <ol class="steps">
+    <li class="step"><span class="n">1</span>
+      <div><h3>Swap the primes for a repeating pattern</h3><p>Real primes are messy. So cross out every multiple of a few chosen Gaussian primes, like a sieve. Every real prime survives (except the few you used), and what's left repeats like wallpaper. If walkers get stuck in the wallpaper, they get stuck on the primes too.</p><div class="see">Try it: "Build a sieve that traps every walker", below.</div></div>
+      <div class="term">Sieved set 𝒜(𝒫) = {z : z ≢ 0 mod π<sub>p</sub>, π̄<sub>p</sub>, p ∈ 𝒫}<br>Periodic under QZ², Q = ∏p</div></li>
+    <li class="step"><span class="n">2</span>
+      <div><h3>Repetition caps every island</h3><p>An island in repeating wallpaper can't contain two points exactly one period apart, or shifting it by that period would give an overlapping island that is the same island, which is impossible for a finite one. So every island has at most Q² points, wherever you start.</p></div>
+      <div class="term">Periodic reduction (after Gethner–Stark, Vardi)<br>#C ≤ max{Q², |E| + (K<sub>D</sub>−1)|E|Q²}</div></li>
+    <li class="step"><span class="n">3</span>
+      <div><h3>Follow a hypothetical endless walk</h3><p>Now prove the right sieve exists. Imagine a walk that goes on forever, never revisiting. Sample it at random times and record its remainders after dividing by many primes. Because the walk keeps reaching new places, those remainders must keep getting more unpredictable.</p></div>
+      <div class="term">Geometric sampling of distinct differences<br>Joint entropy of residues · coverage transfer</div></li>
+    <li class="step"><span class="n">4</span>
+      <div><h3>Dodging costs information it can't afford</h3><p>To avoid every crossed-out point, each step must "know" which remainders to dodge. With enough primes, that knowledge adds up without limit. But a single step of bounded length can only carry a bounded amount of information. The walk can't pay, so it can't exist.</p></div>
+      <div class="term">Increment words · ≥ c / log T information per batch<br>Block subadditivity (cf. Tao's entropy decrement)</div></li>
+  </ol>
+  <div class="aside">
+    <div><h3>No number attached</h3><p>The proof shows the island-size cap B<sub>D</sub> exists for every step length D, but doesn't compute it. The sieve it uses is chosen "sufficiently large" after D is fixed.</p></div>
+    <div><h3>Stronger than asked</h3><p>The old question was whether an endless walk exists. The answer here is a uniform bound: every island, from every starting prime (including primes on the axes), has at most B<sub>D</sub> points.</p></div>
+    <div><h3>How sure is this?</h3><p>The repository reports a Lean formalization of the uniform bound for every real step length. Lean is a proof checker that verifies each step mechanically. The repo also cautions that results may still contain issues while review continues.</p></div>
+  </div>
+  </details>
+</section>
+
+<!-- ============ 1. EXPLORE ============ -->
+<section id="explore">
+  <h2>Try it: walk the Gaussian primes</h2>
+  <p>Each dot is a Gaussian prime. Choose a step limit, then click any dot (or start at the origin) to light up every prime you could ever reach from there. Small steps strand you almost immediately. Bigger steps reach much further, but the theorem says you're always on an island in the end.</p>
+  <p class="muted">a + bi is a Gaussian prime when a² + b² is an ordinary prime, or when it sits on an axis at a prime like 3, 7 or 11 (primes that leave remainder 3 when divided by 4).</p>
+
+  <div class="toolbar">
+    <span class="label">Step limit</span>
+    <div class="seg" role="group" aria-label="Step limit" id="dseg"></div>
+    <button class="btn" id="origin">Start at the origin</button>
+    <span class="spacer"></span>
+    <button class="btn" id="zout" aria-label="Zoom out">−</button>
+    <button class="btn" id="zin" aria-label="Zoom in">+</button>
+    <button class="btn" id="fit">Fit island</button>
+  </div>
+
+  <div class="grid2">
+    <div class="card panel">
+      <div class="cap"><span class="legend"><span><i class="sw" style="background:var(--primary)"></i>reachable</span><span><i class="sw" style="background:var(--muted-foreground)"></i>other Gaussian primes</span></span><span class="label faint">drag to pan · click a dot to start there</span></div>
+      <canvas id="cvMap" class="wide"></canvas>
+    </div>
+    <div class="card readout">
+      <div class="kv"><span class="label">Start</span><span class="mono" id="m-start">–</span></div>
+      <div class="kv"><span class="label">Step limit</span><span class="mono" id="m-d">–</span></div>
+      <div class="rule"></div>
+      <div><div class="label">Primes on this island</div><div class="big" id="m-n">–</div></div>
+      <div class="kv"><span class="label">Farthest from the origin</span><span class="mono" id="m-far">–</span></div>
+      <div class="rule"></div>
+      <div class="note" id="m-note"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 2. SIEVE ============ -->
+<section id="sieve">
+  <h2>Build a sieve that traps every walker</h2>
+  <p>This is the proof's first move, done by hand. Each button crosses out every multiple of one Gaussian prime. What's left repeats forever, and every real Gaussian prime (circled) survives except the ones you used to sieve. If no endless walk exists in what's left, none exists on the primes either, and every island is at most one period squared in size.</p>
+  <p class="muted">Try step limit 1 and cross out 5 and 13. Then try √2: you'll need the "odd" filter too, which keeps only points where a + b is odd. Every Gaussian prime except 1 + i passes that test.</p>
+
+  <div class="toolbar">
+    <span class="label">Step limit</span>
+    <div class="seg" role="group" aria-label="Sieve step limit" id="sdseg"></div>
+    <span class="label" style="margin-left:8px">Cross out</span>
+    <div class="chips" id="pchips"></div>
+    <span class="spacer"></span>
+    <label class="check"><input type="checkbox" id="showp" checked> circle real primes</label>
+  </div>
+
+  <div class="grid2">
+    <div class="card panel">
+      <div class="cap"><span class="legend"><span><i class="sw" style="background:var(--primary)"></i>island that runs off this view</span><span><i class="sw" style="background:var(--muted-foreground)"></i>closed-in islands</span><span><i class="ring"></i>real Gaussian prime</span></span><span class="label faint mono" id="s-win"></span></div>
+      <canvas id="cvSieve" class="wide"></canvas>
+    </div>
+    <div class="card readout">
+      <div class="verdict" id="s-verdict">–</div>
+      <div class="kv"><span class="label">Repeats every</span><span class="mono" id="s-q">–</span></div>
+      <div class="kv"><span class="label">Points kept</span><span class="mono" id="s-kept">–</span></div>
+      <div class="kv"><span class="label">Largest island</span><span class="mono" id="s-max">–</span></div>
+      <div class="rule"></div>
+      <div class="note" id="s-note"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 3. HISTORY ============ -->
+<section id="history">
+  <h2>From one starting point to all of them</h2>
+  <table aria-label="Progress on the Gaussian moat problem">
+    <thead><tr><th>Year</th><th>Who</th><th>What they showed</th></tr></thead>
+    <tbody id="hist"></tbody>
+  </table>
+</section>
+
+<section>
+  <p class="sources">Source: <code>openai/math</code>, family 028, "Bounded-Step Walks on Gaussian Primes" (Sept 26, 2026). The repository reports a Lean formalization (<code>lean/docs/028.md</code>). Islands on this page are computed in your browser within 1,500 of the origin in each direction. Sieve verdicts are computed exactly over one full period. The "odd" filter is a classical trick (the Gaussian prime 1 + i), not part of the paper's sieve, which uses primes of the form 4k + 1.</p>
+</section>
+
+<script>
+(function () {
+"use strict";
+const $ = (id) => document.getElementById(id);
+const css = (n) => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const dark = matchMedia("(prefers-color-scheme: dark)");
+let C = {};
+function readColors() {
+  C = { fg: css("--foreground"), mut: css("--muted-foreground"), faint: css("--faint-foreground"), border: css("--border-strong"),
+        hair: css("--hairline"), primary: css("--primary"), bad: css("--destructive"), good: css("--success"), card: css("--card"), muted: css("--muted"), mono: css("--mono") };
+}
+readColors();
+function fitCanvas(cv) {
+  const r = cv.getBoundingClientRect(), d = window.devicePixelRatio || 1;
+  const w = Math.max(10, Math.round(r.width * d)), h = Math.max(10, Math.round(r.height * d));
+  if (cv.width !== w || cv.height !== h) { cv.width = w; cv.height = h; }
+  const ctx = cv.getContext("2d"); ctx.setTransform(d, 0, 0, d, 0, 0);
+  return { ctx, w: r.width, h: r.height, d };
+}
+const mix = (color, a) => `color-mix(in srgb, ${color} ${Math.round(a * 100)}%, transparent)`;
+const mod = (a, m) => ((a % m) + m) % m;
+function rng(seed) { let s = seed >>> 0; return () => { s = (s + 0x6D2B79F5) >>> 0; let t = s; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+function segButtons(el, items, current, onPick) {
+  el.textContent = "";
+  items.forEach(([val, label]) => { const b = document.createElement("button"); b.textContent = label; b.setAttribute("aria-pressed", String(val === current)); b.onclick = () => onPick(val); el.appendChild(b); });
+}
+function wireFold(id) { const f = $(id); if (f) f.addEventListener("toggle", () => { f.querySelector(".fold-hint").textContent = f.open ? "hide" : "show"; }); }
+function onResize(fn) { let t = 0; new ResizeObserver(() => { clearTimeout(t); t = setTimeout(fn, 50); }).observe(document.body); dark.addEventListener("change", () => { readColors(); fn(); }); }
+function handshake() { if (window.traces && typeof window.traces.getTrace === "function") window.traces.getTrace().catch(() => {}); }
+
+const SIEVE_TABLE = {"||1":{"Q":1,"kept":1,"inf":true,"max":null},"||2":{"Q":1,"kept":1,"inf":true,"max":null},"||4":{"Q":1,"kept":1,"inf":true,"max":null},"|5|1":{"Q":5,"kept":0.64,"inf":true,"max":null},"|5|2":{"Q":5,"kept":0.64,"inf":true,"max":null},"|5|4":{"Q":5,"kept":0.64,"inf":true,"max":null},"|13|1":{"Q":13,"kept":0.852,"inf":true,"max":null},"|13|2":{"Q":13,"kept":0.852,"inf":true,"max":null},"|13|4":{"Q":13,"kept":0.852,"inf":true,"max":null},"|5,13|1":{"Q":65,"kept":0.545,"inf":false,"max":580},"|5,13|2":{"Q":65,"kept":0.545,"inf":true,"max":null},"|5,13|4":{"Q":65,"kept":0.545,"inf":true,"max":null},"|17|1":{"Q":17,"kept":0.886,"inf":true,"max":null},"|17|2":{"Q":17,"kept":0.886,"inf":true,"max":null},"|17|4":{"Q":17,"kept":0.886,"inf":true,"max":null},"|5,17|1":{"Q":85,"kept":0.567,"inf":true,"max":null},"|5,17|2":{"Q":85,"kept":0.567,"inf":true,"max":null},"|5,17|4":{"Q":85,"kept":0.567,"inf":true,"max":null},"|13,17|1":{"Q":221,"kept":0.755,"inf":true,"max":null},"|13,17|2":{"Q":221,"kept":0.755,"inf":true,"max":null},"|13,17|4":{"Q":221,"kept":0.755,"inf":true,"max":null},"|5,13,17|1":{"Q":1105,"kept":0.483,"inf":false,"max":80},"|5,13,17|2":{"Q":1105,"kept":0.483,"inf":true,"max":null},"|5,13,17|4":{"Q":1105,"kept":0.483,"inf":true,"max":null},"2||1":{"Q":2,"kept":0.5,"inf":false,"max":1},"2||2":{"Q":2,"kept":0.5,"inf":true,"max":null},"2||4":{"Q":2,"kept":0.5,"inf":true,"max":null},"2|5|1":{"Q":10,"kept":0.32,"inf":false,"max":1},"2|5|2":{"Q":10,"kept":0.32,"inf":true,"max":null},"2|5|4":{"Q":10,"kept":0.32,"inf":true,"max":null},"2|13|1":{"Q":26,"kept":0.426,"inf":false,"max":1},"2|13|2":{"Q":26,"kept":0.426,"inf":true,"max":null},"2|13|4":{"Q":26,"kept":0.426,"inf":true,"max":null},"2|5,13|1":{"Q":130,"kept":0.273,"inf":false,"max":1},"2|5,13|2":{"Q":130,"kept":0.273,"inf":false,"max":580},"2|5,13|4":{"Q":130,"kept":0.273,"inf":true,"max":null},"2|17|1":{"Q":34,"kept":0.443,"inf":false,"max":1},"2|17|2":{"Q":34,"kept":0.443,"inf":true,"max":null},"2|17|4":{"Q":34,"kept":0.443,"inf":true,"max":null},"2|5,17|1":{"Q":170,"kept":0.283,"inf":false,"max":1},"2|5,17|2":{"Q":170,"kept":0.283,"inf":true,"max":null},"2|5,17|4":{"Q":170,"kept":0.283,"inf":true,"max":null},"2|13,17|1":{"Q":442,"kept":0.377,"inf":false,"max":1},"2|13,17|2":{"Q":442,"kept":0.377,"inf":true,"max":null},"2|13,17|4":{"Q":442,"kept":0.377,"inf":true,"max":null},"2|5,13,17|1":{"Q":2210,"kept":0.242,"inf":false,"max":1},"2|5,13,17|2":{"Q":2210,"kept":0.242,"inf":false,"max":80},"2|5,13,17|4":{"Q":2210,"kept":0.242,"inf":true,"max":null}};
+
+/* ---------------- Gaussian primes ---------------- */
+const LIM = 1500, W = 2 * LIM + 1, NMAX = 2 * LIM * LIM + 8;
+const composite = new Uint8Array(NMAX + 1); composite[0] = composite[1] = 1;
+for (let i = 2; i * i <= NMAX; i++) if (!composite[i]) for (let j = i * i; j <= NMAX; j += i) composite[j] = 1;
+const isP = (n) => n > 1 && !composite[n];
+function gp(a, b) { a = Math.abs(a); b = Math.abs(b); if (a === 0) return isP(b) && b % 4 === 3; if (b === 0) return isP(a) && a % 4 === 3; return isP(a * a + b * b); }
+const fmtZ = (a, b) => (a === 0 && b === 0 ? "0" : b === 0 ? String(a) : a === 0 ? (b === 1 ? "i" : b === -1 ? "−i" : b + "i") : a + (b < 0 ? " − " : " + ") + (Math.abs(b) === 1 ? "" : Math.abs(b)) + "i").replace(/^-/, "−");
+
+/* ---------------- explorer ---------------- */
+const DS = [[2, "√2"], [4, "2"], [8, "√8"], [10, "√10"], [16, "4"], [26, "√26"]];
+const M = { D2: 10, start: [0, 0], comp: new Uint8Array(W * W), n: 0, far: 0, esc: false, cx: 0, cy: 0, ppu: 0.5, bbox: null, drag: null };
+function explore() {
+  const D2 = M.D2, r = Math.floor(Math.sqrt(D2)), O = [];
+  for (let dx = -r; dx <= r; dx++) for (let dy = -r; dy <= r; dy++) if ((dx || dy) && dx * dx + dy * dy <= D2) O.push(dx, dy);
+  M.comp.fill(0); const st = [M.start[0], M.start[1]]; let n = 0, far = 0, esc = false, x0 = M.start[0], x1 = x0, y0 = M.start[1], y1 = y0;
+  if (gp(M.start[0], M.start[1])) { M.comp[(M.start[0] + LIM) * W + M.start[1] + LIM] = 1; n = 1; far = Math.hypot(M.start[0], M.start[1]); }
+  while (st.length) {
+    const y = st.pop(), x = st.pop();
+    for (let k = 0; k < O.length; k += 2) {
+      const nx = x + O[k], ny = y + O[k + 1];
+      if (nx < -LIM || nx > LIM || ny < -LIM || ny > LIM) { esc = true; continue; }
+      const id = (nx + LIM) * W + ny + LIM; if (M.comp[id] || !gp(nx, ny)) continue;
+      M.comp[id] = 1; n++; const d = Math.hypot(nx, ny); if (d > far) far = d;
+      if (nx < x0) x0 = nx; if (nx > x1) x1 = nx; if (ny < y0) y0 = ny; if (ny > y1) y1 = ny; st.push(nx, ny);
+    }
+  }
+  M.n = n; M.far = far; M.esc = esc; M.bbox = [x0, y0, x1, y1];
+}
+function fitIsland() { const cv = $("cvMap"), r = cv.getBoundingClientRect(), [x0, y0, x1, y1] = M.bbox; M.cx = (x0 + x1) / 2; M.cy = (y0 + y1) / 2; M.ppu = Math.min(24, Math.max(0.12, Math.min(r.width / (x1 - x0 + 12), r.height / (y1 - y0 + 12)))); }
+function drawMap() {
+  const cv = $("cvMap"), { ctx, w, h, d } = fitCanvas(cv), ppu = M.ppu;
+  const ax0 = Math.max(-LIM, Math.floor(M.cx - w / 2 / ppu)), ax1 = Math.min(LIM, Math.ceil(M.cx + w / 2 / ppu));
+  const ay0 = Math.max(-LIM, Math.floor(M.cy - h / 2 / ppu)), ay1 = Math.min(LIM, Math.ceil(M.cy + h / 2 / ppu));
+  const X = (a) => w / 2 + (a - M.cx) * ppu, Y = (b) => h / 2 - (b - M.cy) * ppu;
+  // axes
+  ctx.strokeStyle = C.border; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(0, Y(0)); ctx.lineTo(w, Y(0)); ctx.moveTo(X(0), 0); ctx.lineTo(X(0), h); ctx.stroke();
+  if (ppu < 2.5) { // raster
+    const Wp = Math.round(w * d), Hp = Math.round(h * d), img = ctx.getImageData(0, 0, Wp, Hp), a = img.data;
+    const mc = hexRgb(dark.matches ? "#7a7a7a" : "#8a8a8a"), pc = parseColor(C.primary);
+    for (let x = ax0; x <= ax1; x++) for (let y = ay0; y <= ay1; y++) {
+      const inC = M.comp[(x + LIM) * W + y + LIM]; if (!inC && !gp(x, y)) continue;
+      const px = Math.round(X(x) * d), py = Math.round(Y(y) * d); if (px < 0 || py < 0 || px >= Wp || py >= Hp) continue;
+      const c = inC ? pc : mc, o = (py * Wp + px) * 4, s = inC ? 1 : 0.7;
+      a[o] = c[0]; a[o + 1] = c[1]; a[o + 2] = c[2]; a[o + 3] = Math.max(a[o + 3], 255 * s);
+    }
+    ctx.putImageData(img, 0, 0);
+  } else {
+    const rad = Math.max(1.2, Math.min(6, ppu * 0.32));
+    for (let x = ax0; x <= ax1; x++) for (let y = ay0; y <= ay1; y++) {
+      const inC = M.comp[(x + LIM) * W + y + LIM]; if (!inC && !gp(x, y)) continue;
+      ctx.fillStyle = inC ? C.primary : mix(C.mut, 0.6); ctx.beginPath(); ctx.arc(X(x), Y(y), rad, 0, 7); ctx.fill();
+    }
+  }
+  // start marker
+  ctx.strokeStyle = C.fg; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(X(M.start[0]), Y(M.start[1]), 7, 0, 7); ctx.stroke();
+  // limit box
+  ctx.setLineDash([4, 4]); ctx.strokeStyle = C.faint; ctx.strokeRect(X(-LIM), Y(LIM), 2 * LIM * ppu, 2 * LIM * ppu); ctx.setLineDash([]);
+  // scale
+  const units = niceUnits(80 / ppu); ctx.strokeStyle = C.fg; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(10, h - 12); ctx.lineTo(10 + units * ppu, h - 12); ctx.stroke();
+  ctx.fillStyle = C.fg; ctx.font = "11px " + C.mono; ctx.fillText(units.toLocaleString(), 10, h - 18);
+}
+function niceUnits(u) { const p = Math.pow(10, Math.floor(Math.log10(u))); return [1, 2, 5, 10].map((m) => m * p).find((v) => v >= u) || 10 * p; }
+function hexRgb(hx) { const n = parseInt(hx.slice(1), 16); return [n >> 16, (n >> 8) & 255, n & 255]; }
+function parseColor(c) { const cv = document.createElement("canvas"); cv.width = cv.height = 1; const x = cv.getContext("2d"); x.fillStyle = c; x.fillRect(0, 0, 1, 1); const d = x.getImageData(0, 0, 1, 1).data; return [d[0], d[1], d[2]]; }
+function updateMap(refit) {
+  explore(); if (refit) fitIsland(); drawMap();
+  const dl = DS.find((x) => x[0] === M.D2)[1];
+  $("m-start").textContent = fmtZ(M.start[0], M.start[1]); $("m-d").textContent = dl;
+  $("m-n").textContent = M.esc ? "> " + M.n.toLocaleString() : M.n.toLocaleString();
+  $("m-far").textContent = M.far.toFixed(1);
+  const note = $("m-note"); note.textContent = ""; const b = document.createElement("b");
+  if (M.esc) { b.textContent = "Ran off the edge of this map. "; note.append(b, "The island reaches past 1,500 in some direction, beyond what this page explores. Computer searches show walks from the origin are still trapped for steps up to 6, and the 2026 theorem says every island is finite for every step limit."); }
+  else if (M.n <= 1) { b.textContent = "Stranded at once. "; note.append(b, "No other prime is within reach."); }
+  else { b.textContent = "Trapped. "; note.append(b, "That's every prime reachable from here. Around the island lies a moat wider than " + dl + " with no Gaussian primes in it."); }
+  segButtons($("dseg"), DS, M.D2, (v) => { M.D2 = v; updateMap(true); });
+}
+$("origin").onclick = () => { M.start = [0, 0]; updateMap(true); };
+$("zin").onclick = () => { M.ppu = Math.min(24, M.ppu * 1.6); drawMap(); };
+$("zout").onclick = () => { M.ppu = Math.max(0.12, M.ppu / 1.6); drawMap(); };
+$("fit").onclick = () => { fitIsland(); drawMap(); };
+const cvMap = $("cvMap");
+cvMap.addEventListener("pointerdown", (ev) => { M.drag = { x: ev.clientX, y: ev.clientY, cx: M.cx, cy: M.cy, moved: false }; cvMap.setPointerCapture(ev.pointerId); });
+cvMap.addEventListener("pointermove", (ev) => { if (!M.drag) return; const dx = ev.clientX - M.drag.x, dy = ev.clientY - M.drag.y; if (Math.abs(dx) + Math.abs(dy) > 4) M.drag.moved = true; if (M.drag.moved) { M.cx = M.drag.cx - dx / M.ppu; M.cy = M.drag.cy + dy / M.ppu; drawMap(); } });
+cvMap.addEventListener("pointerup", (ev) => {
+  const dr = M.drag; M.drag = null; if (!dr || dr.moved) return;
+  const r = cvMap.getBoundingClientRect(), ux = M.cx + (ev.clientX - r.left - r.width / 2) / M.ppu, uy = M.cy - (ev.clientY - r.top - r.height / 2) / M.ppu;
+  const rad = Math.max(1, Math.ceil(8 / M.ppu)); let best = null, bd = Infinity;
+  for (let x = Math.round(ux) - rad; x <= Math.round(ux) + rad; x++) for (let y = Math.round(uy) - rad; y <= Math.round(uy) + rad; y++) { if (Math.abs(x) > LIM || Math.abs(y) > LIM || !gp(x, y)) continue; const d = Math.hypot(x - ux, y - uy); if (d < bd) { bd = d; best = [x, y]; } }
+  if (best) { M.start = best; updateMap(false); }
+});
+
+/* ---------------- sieve ---------------- */
+const SPR = { 5: [2, 1], 13: [3, 2], 17: [4, 1] };
+const SV = { D2: 1, par: false, ps: new Set([5]), showP: true };
+const SDS = [[1, "1"], [2, "√2"], [4, "2"]];
+function kept(x, y) {
+  if (SV.par && !((x + y) & 1)) return false;
+  for (const p of SV.ps) { const [a, b] = SPR[p], m = (v) => ((v % p) + p) % p; if ((m(x * a + y * b) === 0 && m(y * a - x * b) === 0) || (m(x * a - y * b) === 0 && m(y * a + x * b) === 0)) return false; }
+  return true;
+}
+function drawSieve() {
+  const cv = $("cvSieve"), { ctx, w, h } = fitCanvas(cv), cols = w < 500 ? 40 : 72, cell = w / cols, rows = Math.floor(h / cell), x0 = -Math.floor(cols / 2) + 1, y0 = -Math.floor(rows / 2) + 1;
+  $("s-win").textContent = cols + " × " + rows + " points";
+  const K = new Uint8Array(cols * rows), lab = new Int32Array(cols * rows).fill(-1), edge = [];
+  for (let i = 0; i < cols; i++) for (let j = 0; j < rows; j++) K[i * rows + j] = kept(x0 + i, y0 + j) ? 1 : 0;
+  const r = Math.floor(Math.sqrt(SV.D2)), O = []; for (let dx = -r; dx <= r; dx++) for (let dy = -r; dy <= r; dy++) if ((dx || dy) && dx * dx + dy * dy <= SV.D2) O.push([dx, dy]);
+  let c = 0;
+  for (let s = 0; s < cols * rows; s++) { if (!K[s] || lab[s] >= 0) continue; const st = [s]; lab[s] = c; let touches = false;
+    while (st.length) { const u = st.pop(), ui = Math.floor(u / rows), uj = u % rows; if (ui === 0 || uj === 0 || ui === cols - 1 || uj === rows - 1) touches = true;
+      for (const [dx, dy] of O) { const ni = ui + dx, nj = uj + dy; if (ni < 0 || nj < 0 || ni >= cols || nj >= rows) continue; const t = ni * rows + nj; if (K[t] && lab[t] < 0) { lab[t] = c; st.push(t); } } }
+    edge.push(touches); c++; }
+  const rad = Math.max(1.2, cell * 0.3), X = (i) => (i + 0.5) * cell, Y = (j) => h - (j + 0.5) * cell;
+  for (let i = 0; i < cols; i++) for (let j = 0; j < rows; j++) {
+    const s = i * rows + j; ctx.beginPath(); ctx.arc(X(i), Y(j), K[s] ? rad : rad * 0.45, 0, 7);
+    ctx.fillStyle = !K[s] ? mix(C.faint, 0.35) : edge[lab[s]] ? C.primary : mix(C.mut, 0.75); ctx.fill();
+  }
+  if (SV.showP) { ctx.strokeStyle = C.fg; ctx.lineWidth = 1.1; for (let i = 0; i < cols; i++) for (let j = 0; j < rows; j++) if (gp(x0 + i, y0 + j)) { ctx.beginPath(); ctx.arc(X(i), Y(j), rad + 2.2, 0, 7); ctx.stroke(); } }
+  // origin cross
+  const oi = -x0, oj = -y0; ctx.strokeStyle = C.fg; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(X(oi) - 5, Y(oj)); ctx.lineTo(X(oi) + 5, Y(oj)); ctx.moveTo(X(oi), Y(oj) - 5); ctx.lineTo(X(oi), Y(oj) + 5); ctx.stroke();
+}
+function updateSieve() {
+  segButtons($("sdseg"), SDS, SV.D2, (v) => { SV.D2 = v; updateSieve(); });
+  const chips = $("pchips"); chips.textContent = "";
+  const add = (label, on, fn, title) => { const b = document.createElement("button"); b.textContent = label; b.title = title; b.setAttribute("aria-pressed", String(on)); b.onclick = fn; chips.appendChild(b); };
+  add("odd only", SV.par, () => { SV.par = !SV.par; updateSieve(); }, "Keep only points with a + b odd (cross out multiples of 1 + i)");
+  [[5, "2 ± i"], [13, "3 ± 2i"], [17, "4 ± i"]].forEach(([p, f]) => add(p + " = (" + f + ")(…)", SV.ps.has(p), () => { SV.ps.has(p) ? SV.ps.delete(p) : SV.ps.add(p); updateSieve(); }, "Cross out multiples of " + f));
+  // relabel chips compactly
+  Array.from(chips.children).slice(1).forEach((b, i) => { b.textContent = ["2 ± i", "3 ± 2i", "4 ± i"][i]; });
+  const key = (SV.par ? "2" : "") + "|" + [5, 13, 17].filter((p) => SV.ps.has(p)).join(",") + "|" + SV.D2, t = SIEVE_TABLE && SIEVE_TABLE[key];
+  const v = $("s-verdict"), note = $("s-note");
+  if (t) {
+    v.textContent = t.inf ? "An endless walk still exists." : "Every walker is trapped."; v.className = "verdict " + (t.inf ? "bad" : "good");
+    $("s-q").textContent = t.Q.toLocaleString() + " × " + t.Q.toLocaleString(); $("s-kept").textContent = Math.round(t.kept * 100) + "%";
+    $("s-max").textContent = t.inf ? "endless" : t.max.toLocaleString() + " points";
+    note.textContent = t.inf ? (SV.D2 === 4 ? "Step limit 2 needs bigger primes than fit on this page. The 2026 theorem says some finite list of primes always works, for every step limit." : "Some island wraps all the way around the repeating pattern, so you could walk forever. Cross out more.")
+      : t.max === 1 ? "Nobody can move at all: every kept point is cut off from its neighbors." : "Checked exactly over one full period. No island here has more than " + t.max.toLocaleString() + " points, so no Gaussian-prime island with this step limit can be bigger than that, apart from a few near the crossed-out primes.";
+  }
+  drawSieve();
+}
+$("showp").addEventListener("change", () => { SV.showP = $("showp").checked; drawSieve(); });
+
+/* ---------------- history ---------------- */
+const HIST = [
+  ["1962", "Basil Gordon", "Asks the question at the International Congress of Mathematicians in Stockholm. Motzkin and Erdős spread it."],
+  ["1997", "Gethner and Stark", "Periodic sieves trap every walker for steps √2 and 2, from any start. Proposes sieving with more primes for longer steps."],
+  ["1998", "Gethner, Wagon, Wick", "Computer search: from the origin with steps up to √10, the farthest reachable prime is 1,024.4 away (reproduced in the explorer above). Also builds arbitrarily isolated primes."],
+  ["1998", "Vardi", "Studies the repeating sieve patterns, and how \"no endless walk\" turns into a cap on island size."],
+  ["2005", "Tsuchimura", "From the origin, steps up to 6 are trapped too (a large computation)."],
+  ["2026", "OpenAI model", "Every step limit, every starting prime: islands are always finite, with a size cap depending only on the step limit."],
+];
+function renderHist() { const tb = $("hist"); tb.textContent = ""; HIST.forEach(([y, who, what]) => { const tr = document.createElement("tr"); [y, who, what].forEach((t, i) => { const td = document.createElement("td"); td.textContent = t; if (i === 0) td.className = "mono"; tr.appendChild(td); }); tb.appendChild(tr); }); }
+
+/* ---------------- boot ---------------- */
+wireFold("proof-fold"); renderHist(); updateMap(true); updateSieve();
+onResize(() => { drawMap(); drawSieve(); });
+handshake();
+})();
+</script>
+</body>
+</html>

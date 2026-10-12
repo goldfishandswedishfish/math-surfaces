@@ -1,0 +1,321 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>A tile that never repeats</title>
+<style>
+/*BASE_CSS*/
+.cells { display: inline-flex; gap: 3px; }
+.cells button { width: 26px; height: 26px; padding: 0; border: 1px solid var(--border-strong); border-radius: 4px; font-family: var(--mono); font-size: 11px; color: var(--faint-foreground); }
+.cells button[aria-pressed="true"] { background: var(--primary); color: var(--card); border-color: var(--primary); }
+#cvStrip { aspect-ratio: auto; height: 96px; }
+#cvWord { aspect-ratio: auto; height: 64px; }
+#cv3d { cursor: grab; }
+#cv3d:active { cursor: grabbing; }
+.three { display: grid; grid-template-columns: minmax(0, 1fr) 260px; gap: 12px; }
+@media (max-width: 860px) { .three { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+
+<!-- ============ OVERVIEW ============ -->
+<section id="overview">
+  <p class="lede">Some shapes can fill all of space when you're only allowed to <em>slide</em> copies around, with no turning or flipping. Whenever that's possible, can you always do it in a neat, endlessly repeating pattern, like bricks in a wall? This was called the <i>periodic tiling conjecture</i>. In September 2026, a proof produced by an OpenAI model built a single 3D shape that fills space but <em>never</em> in a repeating way. Three dimensions is the lowest where this can happen.</p>
+
+  <div class="why">
+    <div class="card">
+      <h3>The question</h3>
+      <p>Take a shape made of cubes on a grid. Slide copies of it (no rotating) so they fill space with no gaps and no overlaps. If you can do that at all, can you always do it periodically, so the whole arrangement repeats when you shift by some fixed steps in every direction? Grünbaum–Shephard and Lagarias–Wang conjectured yes.</p>
+    </div>
+    <div class="card">
+      <h3>Why it matters</h3>
+      <p>Repeating patterns are what make tiling questions checkable by computer. If every tile that tiles could do it periodically, a program could always decide whether a given shape tiles. Shapes that only tile non-periodically are where that breaks down, and they connect tiling to the limits of computation. (The 2023 "hat" tile is non-periodic too, but it needs rotations and flips.)</p>
+    </div>
+    <div class="card">
+      <h3>Why it was hard</h3>
+      <p>On a line, any tiling repeats (Newman, 1977). In the plane, every tile that tiles also has a repeating tiling (Bhattacharya, 2016). Greenfeld and Tao disproved the conjecture in 2022, but only in an enormous number of dimensions. Getting all the way down to three needed a much tighter encoding.</p>
+    </div>
+  </div>
+
+  <details class="fold" id="proof-fold">
+  <summary><span class="chev" aria-hidden="true"></span><span class="fold-title">How the proof works, in four moves</span><span class="fold-hint">show</span></summary>
+  <p class="muted" style="font-size:13px; margin-top:6px">The strategy, following Greenfeld and Tao, is to hide a puzzle inside a tile. The puzzle has solutions, but none that repeat. Plain language is on the left, the paper's own terms on the right.</p>
+  <ol class="steps">
+    <li class="step"><span class="n">1</span>
+      <div><h3>A Sudoku that can't repeat</h3><p>Fill a tall strip of a grid with digits from 1 to p−1 under one rule: along every straight line through the grid, the digits must follow a simple arithmetic pattern. There is a solution, built from the last nonzero digit of numbers in base p. But no solution can repeat as you go up the strip.</p><div class="see">Try it: "The pattern that won't repeat", below.</div></div>
+      <div class="term">p-adic Sudoku line rule (Greenfeld–Tao), p &gt; 200, width p²<br>Model W(n, m) = last nonzero base-p digit of m</div></li>
+    <li class="step"><span class="n">2</span>
+      <div><h3>Turn the rules into tiling puzzles</h3><p>Each Sudoku rule becomes a tiling puzzle, and all the puzzles must be solved by the same set of slides at once. The new trick is to keep the extra "bookkeeping" dimension a single loop, rather than several, by using groups of different prime sizes.</p></div>
+      <div class="term">Simultaneous tiling equations in ℤ² × ℤ/Qℤ<br>Activation and cycle tests · pairwise coprime cyclic factors</div></li>
+    <li class="step"><span class="n">3</span>
+      <div><h3>Merge the puzzles into one tile</h3><p>Stacking the puzzles with the help of a fresh prime packs all of them into a single tile. That one tile tiles the space, but every tiling of it secretly solves the Sudoku, so none can repeat.</p></div>
+      <div class="term">Stacking construction → one tile F ⊂ ℤ² × ℤ/Qℤ</div></li>
+    <li class="step"><span class="n">4</span>
+      <div><h3>Unroll the loop into real 3D space</h3><p>A plane times a loop of Q steps is what you get from 3D space if you wrap the height every Q steps. The proof builds a 3D tile from many cubes plus one "marked" cube. If it had a repeating tiling, so would the looped version, which is impossible. This holds even if you're allowed to slide by fractional amounts.</p></div>
+      <div class="term">Quotient ℤ³ → ℤ² × ℤ/Qℤ, kernel ℤ(0,0,Q)<br>Rigid representatives · marked cube · unit-cube thickening Ω = T + [0,1]³</div></li>
+  </ol>
+  <div class="aside">
+    <div><h3>How big is the tile?</h3><p>Enormous, and the paper never states a size. The Sudoku alone needs a prime p above 200 and a strip p² wide, and every later step multiplies the size. The tile isn't required to be connected either.</p></div>
+    <div><h3>What exactly is ruled out</h3><p>"Fully periodic" means repeating along three independent directions. The tile might still have tilings that repeat in one or two directions. Every tiling fails in at least one direction.</p></div>
+    <div><h3>How sure is this?</h3><p>The repository reports a Lean formalization of both the 3D grid version and the solid-cube version, and that three is the lowest dimension where this can happen. Lean is a proof checker that verifies each step mechanically. The repo also cautions that results may still contain issues while review continues.</p></div>
+  </div>
+  </details>
+</section>
+
+<!-- ============ 1. LINE ============ -->
+<section id="line">
+  <h2>Try it: on a line, every tiling repeats</h2>
+  <p>Pick which of these 10 cells belong to your tile. The page searches for a way to slide copies along an endless line so every cell is covered exactly once. Whenever it finds one, the arrangement repeats. In 1977 Donald Newman proved it must: on a line there are only finitely many ways the pattern can look locally, so it has to cycle.</p>
+
+  <div class="toolbar">
+    <span class="label">Your tile</span>
+    <div class="cells" id="cells" role="group" aria-label="Tile cells"></div>
+    <span class="spacer"></span>
+    <div class="seg" role="group" aria-label="Examples" id="ex1"></div>
+  </div>
+
+  <div class="grid2">
+    <div class="card panel">
+      <div class="cap"><span class="label">The line, covered by copies of your tile</span><span class="label faint" id="strip-cap"></span></div>
+      <canvas id="cvStrip"></canvas>
+    </div>
+    <div class="card readout">
+      <div class="verdict" id="l-verdict" style="font-size:15px">–</div>
+      <div class="kv"><span class="label">Repeats every</span><span class="mono" id="l-per">–</span></div>
+      <div class="kv"><span class="label">Copies per repeat</span><span class="mono" id="l-copies">–</span></div>
+      <div class="rule"></div>
+      <div class="note" id="l-note"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 2. SUDOKU ============ -->
+<section id="sudoku">
+  <h2>The pattern that won't repeat</h2>
+  <p>This is the puzzle hidden inside the 3D tile. Write each number m = 1, 2, 3, … in base p and keep only its <em>last nonzero digit</em>. Each digit gets a color, and the sequence is laid out in rows so you can see its structure. It looks almost repeating: every row starts the same way. But zoom out and the multiples of p carry a slower copy of the same pattern, and inside that an even slower one, forever.</p>
+  <p class="muted">Pick a candidate period M. The page compares every m with m + M and marks the mismatches. Some always appear: take m = M·(p − 1), so m + M = M·p. Multiplying by p just adds a zero, so M·p ends in the same digit as M, but M·(p − 1) ends in the negative of it.</p>
+
+  <div class="toolbar">
+    <span class="label">Base p</span>
+    <div class="seg" role="group" aria-label="Base" id="pseg"></div>
+    <span class="spacer"></span>
+    <label class="slider">Try period M <input id="M" type="range" min="1" max="250" value="5" aria-label="Candidate period"> <span class="mono" id="M-v"></span></label>
+  </div>
+
+  <div class="grid2">
+    <div class="card panel">
+      <div class="cap"><span class="label" id="dig-cap"></span><span class="label faint">outlined: m where m and m + M disagree</span></div>
+      <canvas id="cvDig" class="wide"></canvas>
+    </div>
+    <div class="card readout">
+      <div class="kv"><span class="label">Candidate period</span><span class="mono" id="s-M">–</span></div>
+      <div class="kv"><span class="label">Mismatches shown</span><span class="mono bad" id="s-bad">–</span></div>
+      <div class="kv"><span class="label">First mismatch</span><span class="mono" id="s-first">–</span></div>
+      <div class="rule"></div>
+      <div class="note" id="s-note"></div>
+    </div>
+  </div>
+
+  <h2 style="margin-top:22px; font-size:15px">Reading along a line</h2>
+  <p class="muted">In the paper's grid, the column index n and row index m combine as d·n + e along a line of slope d. Reading the last nonzero digit along any line gives the same simple shape: d·n + e counted in clock arithmetic mod p, with a twist where d·n + e is a multiple of p. That rule along every line is what forces the non-repeating structure.</p>
+  <div class="toolbar">
+    <label class="slider">slope d <input id="dd" type="range" min="0" max="12" value="1" aria-label="Slope"> <span class="mono" id="dd-v"></span></label>
+    <label class="slider">offset e <input id="ee" type="range" min="0" max="60" value="3" aria-label="Offset"> <span class="mono" id="ee-v"></span></label>
+  </div>
+  <div class="card panel"><div class="cap"><span class="label mono" id="word-cap"></span><span class="label faint">ring: d·n+e divisible by p · dot: divisible by p² (any digit allowed)</span></div><canvas id="cvWord"></canvas></div>
+</section>
+
+<!-- ============ 3. 3D ============ -->
+<section id="space">
+  <h2>What a 3D tiling by slides looks like</h2>
+  <p>Here is a small 3D tile: one cube with three neighbors, like the corner of a box. Copies of it, only slid and never turned, fill space perfectly, in a repeating pattern. Pull them apart to see how they interlock, and drag to turn the view.</p>
+  <p class="muted">This tile is an illustration. The 2026 counterexample is built the same way from unit cubes, but with an enormous number of them, and no arrangement of its copies ever repeats in all three directions.</p>
+  <div class="toolbar">
+    <label class="slider">Pull apart <input id="ex" type="range" min="0" max="100" value="35" aria-label="Explode"></label>
+    <label class="slider">Block size <input id="bs" type="range" min="2" max="5" value="4" aria-label="Block size"> <span class="mono" id="bs-v"></span></label>
+    <span class="spacer"></span>
+    <button class="btn" id="spin">Pause</button>
+  </div>
+  <div class="three">
+    <div class="card panel"><div class="cap"><span class="label">Copies of one tile filling a block</span><span class="label faint">drag to rotate</span></div><canvas id="cv3d" class="wide"></canvas></div>
+    <div class="card readout">
+      <div class="kv"><span class="label">Cubes per tile</span><span class="mono">4</span></div>
+      <div class="kv"><span class="label">Copies shown</span><span class="mono" id="t-n">–</span></div>
+      <div class="kv"><span class="label">Repeats every</span><span class="mono">4 steps</span></div>
+      <div class="rule"></div>
+      <p class="note" style="max-width:none">The copies sit at grid points where x + 2y + 3z is a multiple of 4. The tile's four cubes land on remainders 0, 1, 2 and 3, so every cube of space is covered exactly once. Rules like this are why small tiles always seem to repeat. The counterexample has to defeat every such rule.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 4. LADDER ============ -->
+<section id="ladder">
+  <h2>Dimension by dimension</h2>
+  <table aria-label="Periodic tiling conjecture by dimension">
+    <thead><tr><th>Space</th><th>Does every tile that tiles have a repeating tiling?</th><th>Who</th></tr></thead>
+    <tbody id="ladder-t"></tbody>
+  </table>
+</section>
+
+<section>
+  <p class="sources">Source: <code>openai/math</code>, family 155, "A translational tile with no fully periodic tiling in dimension three" (Sept 23, 2026). The repository reports a Lean formalization, including that three is the least lattice dimension (<code>lean/docs/155.md</code>). Line tilings are found by exhaustive search up to Newman's period bound. The 3D tile shown is an illustration, not the counterexample.</p>
+</section>
+
+<script>
+(function () {
+"use strict";
+/*BASE_JS*/
+const PAL_L = ["#8fb3ff", "#ffb38a", "#9fd8a8", "#f2a7c8", "#ffd966", "#b8a4f0", "#8dd5d8", "#d9c2a0"];
+const PAL_D = ["#3d5a99", "#9a5a36", "#3f7a4c", "#8a4766", "#8f7a2a", "#5d4f99", "#2f7a7d", "#7a6648"];
+const pal = () => (dark.matches ? PAL_D : PAL_L);
+
+/* ---------------- 1D tiles ---------------- */
+const T1 = { cells: new Set([0, 1, 4, 5]), res: null };
+function tiles1D(T) {
+  const D = Math.max(...T);
+  for (let L = T.length; L <= Math.pow(2, D + 1); L += T.length) {
+    if (new Set(T.map((t) => t % L)).size < T.length) continue;
+    const used = new Uint8Array(L), A = [];
+    const rec = () => { const i = used.indexOf(0); if (i < 0) return true;
+      for (const s of T) { const st = i - s; if (T.every((t) => !used[mod(st + t, L)])) { T.forEach((t) => (used[mod(st + t, L)] = 1)); A.push(st); if (rec()) return true; A.pop(); T.forEach((t) => (used[mod(st + t, L)] = 0)); } }
+      return false; };
+    if (rec()) return { L, A: A.map((a) => mod(a, L)).sort((x, y) => x - y) };
+  }
+  return null;
+}
+function drawStrip() {
+  const { ctx, w, h } = fitCanvas($("cvStrip")), res = T1.res, T = Array.from(T1.cells).sort((a, b) => a - b);
+  const n = w < 500 ? 24 : 48, cw = w / n, y0 = 30, ch = Math.min(40, cw * 1.6);
+  if (!res) {
+    ctx.fillStyle = C.mut; ctx.font = "13px " + css("--mono");
+    for (let i = 0; i < n; i++) { ctx.strokeStyle = C.border; ctx.strokeRect(i * cw + 1, y0, cw - 2, ch); }
+    T.forEach((t) => { if (t < n) { ctx.fillStyle = C.primary; ctx.fillRect(t * cw + 1, y0, cw - 2, ch); } });
+    ctx.fillStyle = C.bad; ctx.fillText("one copy fits, but no arrangement covers every cell exactly once", 0, y0 + ch + 26); return;
+  }
+  const owner = new Int32Array(n).fill(-1);
+  for (let k = -2; k * res.L < n + 12; k++) res.A.forEach((a, j) => { const st = a + k * res.L; T.forEach((t) => { const c = st + t; if (c >= 0 && c < n) owner[c] = k * res.A.length + j; }); });
+  const P = pal();
+  for (let i = 0; i < n; i++) { ctx.fillStyle = P[mod(owner[i], P.length)]; ctx.fillRect(i * cw + 0.5, y0, cw - 1, ch); }
+  // links within each copy
+  ctx.strokeStyle = C.fg; ctx.lineWidth = 1.2; ctx.globalAlpha = 0.6;
+  const seen = new Set(); for (let i = 0; i < n; i++) { const o = owner[i]; if (seen.has(o)) continue; seen.add(o); const cs = []; for (let j = 0; j < n; j++) if (owner[j] === o) cs.push(j); if (cs.length < 2) continue; ctx.beginPath(); ctx.moveTo((cs[0] + 0.5) * cw, y0 - 6); cs.forEach((c) => ctx.lineTo((c + 0.5) * cw, y0 - 6)); ctx.stroke(); cs.forEach((c) => { ctx.beginPath(); ctx.arc((c + 0.5) * cw, y0 - 6, 2, 0, 7); ctx.fillStyle = C.fg; ctx.fill(); }); }
+  ctx.globalAlpha = 1;
+  // period brackets
+  ctx.strokeStyle = C.primary; ctx.lineWidth = 1.5; ctx.fillStyle = C.primary; ctx.font = "11px " + css("--mono");
+  for (let k = 0; k * res.L < n; k++) { const x = k * res.L * cw; ctx.beginPath(); ctx.moveTo(x, y0 + ch + 4); ctx.lineTo(x, y0 + ch + 14); ctx.stroke(); if ((k + 1) * res.L <= n) ctx.fillText("repeat " + (k + 1), x + 4, y0 + ch + 14); }
+}
+function updateLine() {
+  const cells = $("cells"); cells.textContent = "";
+  for (let i = 0; i < 10; i++) { const b = document.createElement("button"); b.textContent = i; b.setAttribute("aria-pressed", String(T1.cells.has(i))); b.setAttribute("aria-label", "Cell " + i);
+    b.onclick = () => { if (T1.cells.has(i)) { if (T1.cells.size > 1) T1.cells.delete(i); } else T1.cells.add(i); updateLine(); }; cells.appendChild(b); }
+  const mn = Math.min(...T1.cells), T = Array.from(T1.cells).map((c) => c - mn).sort((a, b) => a - b);
+  T1.res = tiles1D(T);
+  const v = $("l-verdict"), note = $("l-note");
+  $("strip-cap").textContent = "tile = {" + T.join(", ") + "}";
+  if (T1.res) { v.textContent = "It tiles, and the tiling repeats."; v.className = "verdict good"; $("l-per").textContent = T1.res.L + " cells"; $("l-copies").textContent = T1.res.A.length;
+    note.textContent = "Each color is one copy of your tile. The search only tries repeating arrangements up to Newman's bound, but that's enough: on a line, any tile that tiles at all has a repeating tiling this short."; }
+  else { v.textContent = "This tile can't fill the line."; v.className = "verdict bad"; $("l-per").textContent = "–"; $("l-copies").textContent = "–";
+    note.textContent = "Checked every repeating arrangement up to Newman's bound of 2^" + (Math.max(...T) + 1) + " cells. On a line, if no repeating tiling exists, no tiling exists at all."; }
+  segButtons($("ex1"), [["0,2", "gap"], ["0,1,4,5", "pairs"], ["0,3,4,7", "zigzag"], ["0,1,3", "won't fit"]], [...T].join(","), (k) => { T1.cells = new Set(k.split(",").map(Number)); updateLine(); });
+  drawStrip();
+}
+
+/* ---------------- Sudoku digits ---------------- */
+const SD = { p: 5, M: 5 };
+const lastDigit = (t, p) => { if (t === 0) return 1; t = Math.abs(t); while (t % p === 0) t /= p; return t % p; };
+function drawDigits() {
+  const p = SD.p, M = SD.M, { ctx, w, h } = fitCanvas($("cvDig"));
+  const rowLen = p === 3 ? 27 : p * p, maxRows = Math.max(4, Math.floor(h / Math.max(4, w / rowLen))), cw = w / rowLen, chh = Math.min(cw, h / maxRows), rows = Math.floor(h / chh), total = rows * rowLen, P = pal();
+  $("dig-cap").textContent = "last nonzero digit of m in base " + p + ", m = 1 … " + total.toLocaleString() + ", " + rowLen + " per row";
+  let bad = 0, first = null;
+  for (let m = 1; m <= total; m++) {
+    const i = (m - 1) % rowLen, j = Math.floor((m - 1) / rowLen), d = lastDigit(m, p);
+    ctx.fillStyle = P[d - 1]; ctx.fillRect(i * cw, j * chh, cw - (cw > 6 ? 1 : 0), chh - (chh > 6 ? 1 : 0));
+    if (lastDigit(m + M, p) !== d) { bad++; if (first === null) first = m; ctx.strokeStyle = C.bad; ctx.lineWidth = Math.max(1, Math.min(2, cw / 5)); ctx.strokeRect(i * cw + 0.5, j * chh + 0.5, cw - 1.5, chh - 1.5); }
+  }
+  $("s-M").textContent = M; $("s-bad").textContent = bad.toLocaleString(); $("s-first").textContent = first ? "m = " + first : "none on screen";
+  const witness = M * (p - 1);
+  $("s-note").textContent = "";
+  const b = document.createElement("b"); b.textContent = "M = " + M + " fails. ";
+  $("s-note").append(b, "For example m = " + witness.toLocaleString() + " ends in " + lastDigit(witness, p) + ", but m + M = " + (witness + M).toLocaleString() + " ends in " + lastDigit(witness + M, p) + ". The same trick defeats every M.");
+  // legend
+  ctx.font = "11px " + css("--mono");
+}
+function drawWord() {
+  const p = SD.p, d = +$("dd").value, e = +$("ee").value, N = p * p, { ctx, w, h } = fitCanvas($("cvWord")), cw = w / N, P = pal(), y = 8, ch = Math.min(28, h - 16);
+  $("dd-v").textContent = d; $("ee-v").textContent = e;
+  $("word-cap").textContent = "digits of " + d + "·n + " + e + " for n = 0 … " + (N - 1);
+  for (let n = 0; n < N; n++) {
+    const t = d * n + e, dg = lastDigit(t, p); ctx.fillStyle = P[dg - 1]; ctx.fillRect(n * cw + 0.5, y, cw - 1, ch);
+    if (cw > 12) { ctx.fillStyle = dark.matches ? "#fff" : "#141414"; ctx.font = "11px " + css("--mono"); ctx.textAlign = "center"; ctx.fillText(String(dg), (n + 0.5) * cw, y + ch / 2 + 4); ctx.textAlign = "start"; }
+    if (t % p === 0) { ctx.strokeStyle = C.fg; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc((n + 0.5) * cw, y + ch + 9, Math.min(4, cw / 3), 0, 7); ctx.stroke(); if (t % (p * p) === 0) { ctx.fillStyle = C.fg; ctx.fill(); } }
+  }
+}
+function updateSudoku() {
+  segButtons($("pseg"), [[3, "3"], [5, "5"], [7, "7"]], SD.p, (p) => { SD.p = p; updateSudoku(); });
+  SD.M = +$("M").value; $("M-v").textContent = SD.M; drawDigits(); drawWord();
+}
+$("M").addEventListener("input", updateSudoku); $("dd").addEventListener("input", drawWord); $("ee").addEventListener("input", drawWord);
+
+/* ---------------- 3D tiling ---------------- */
+const TD = { yaw: 0.7, pitch: 0.55, ex: 0.35, B: 4, spin: true, drag: null, copies: [] };
+const TILE = [[0, 0, 0], [1, 0, 0], [0, 1, 0], [0, 0, 1]];
+function buildCopies() {
+  const B = TD.B, out = [];
+  for (let a = 0; a < B; a++) for (let b = 0; b < B; b++) for (let c = 0; c < B; c++) {
+    if (mod(a + 2 * b + 3 * c, 4)) continue;
+    out.push({ base: [a, b, c], cubes: TILE.map(([x, y, z]) => [a + x, b + y, c + z]) });
+  }
+  TD.copies = out; $("t-n").textContent = String(out.length); $("bs-v").textContent = B + "³";
+}
+function draw3d() {
+  const { ctx, w, h } = fitCanvas($("cv3d")), B = TD.B, cy = Math.cos(TD.yaw), sy = Math.sin(TD.yaw), cp = Math.cos(TD.pitch), sp = Math.sin(TD.pitch);
+  const sc = Math.min(w, h) / (B * (1.9 + TD.ex * 1.6)), ctr = (B - 1) / 2 + 0.5;
+  const rot = ([x, y, z]) => { const X = x - ctr, Y = y - ctr, Z = z - ctr, x1 = cy * X - sy * Y, y1 = sy * X + cy * Y; return [x1, cp * y1 - sp * Z, sp * y1 + cp * Z]; };
+  const proj = (v) => { const r = rot(v); return [w / 2 + r[0] * sc, h / 2 - r[2] * sc, r[1]]; };
+  const P = pal(), faces = [];
+  const FACES = [[[0, 0, 0], [1, 0, 0], [1, 1, 0], [0, 1, 0], [0, 0, -1]], [[0, 0, 1], [1, 0, 1], [1, 1, 1], [0, 1, 1], [0, 0, 1]], [[0, 0, 0], [1, 0, 0], [1, 0, 1], [0, 0, 1], [0, -1, 0]], [[0, 1, 0], [1, 1, 0], [1, 1, 1], [0, 1, 1], [0, 1, 0]], [[0, 0, 0], [0, 1, 0], [0, 1, 1], [0, 0, 1], [-1, 0, 0]], [[1, 0, 0], [1, 1, 0], [1, 1, 1], [1, 0, 1], [1, 0, 0]]];
+  const light = rot([0.3, -0.6, 0.75]); const viewDir = [0, 1, 0];
+  TD.copies.forEach((cp0, ci) => {
+    const cen = cp0.cubes.reduce((s, c) => [s[0] + c[0] / 4, s[1] + c[1] / 4, s[2] + c[2] / 4], [0, 0, 0]), off = [(cen[0] + 0.5 - ctr) * TD.ex * 1.4, (cen[1] + 0.5 - ctr) * TD.ex * 1.4, (cen[2] + 0.5 - ctr) * TD.ex * 1.4];
+    const set = new Set(cp0.cubes.map((c) => c.join()));
+    cp0.cubes.forEach((c) => FACES.forEach((f) => {
+      const nb = [c[0] + f[4][0], c[1] + f[4][1], c[2] + f[4][2]]; if (set.has(nb.join())) return; // internal face of this tile
+      const n = rot(f[4]); const nr = [n[0], n[1], n[2]]; if (nr[1] > 0) return; // back-facing (viewer at -y)
+      const pts = f.slice(0, 4).map((q) => proj([c[0] + q[0] + off[0], c[1] + q[1] + off[1], c[2] + q[2] + off[2]]));
+      const depth = pts.reduce((s, q) => s + q[2], 0) / 4, shade = 0.62 + 0.38 * Math.max(0, -(nr[0] * light[0] + nr[1] * light[1] + nr[2] * light[2]));
+      faces.push({ pts, depth, col: P[ci % P.length], shade });
+    }));
+  });
+  faces.sort((a, b) => b.depth - a.depth);
+  faces.forEach((f) => { ctx.beginPath(); f.pts.forEach((q, i) => (i ? ctx.lineTo(q[0], q[1]) : ctx.moveTo(q[0], q[1]))); ctx.closePath(); ctx.fillStyle = f.col; ctx.fill(); ctx.fillStyle = `rgba(0,0,0,${(1 - f.shade).toFixed(3)})`; ctx.fill(); ctx.strokeStyle = dark.matches ? "rgba(0,0,0,0.55)" : "rgba(0,0,0,0.25)"; ctx.lineWidth = 1; ctx.stroke(); });
+}
+let last = 0;
+function loop(t) { if (TD.spin && !TD.drag && !matchMedia("(prefers-reduced-motion: reduce)").matches) { TD.yaw += Math.min(50, t - last) * 0.0003; draw3d(); } last = t; requestAnimationFrame(loop); }
+const cv3 = $("cv3d");
+cv3.addEventListener("pointerdown", (ev) => { TD.drag = { x: ev.clientX, y: ev.clientY, yaw: TD.yaw, pitch: TD.pitch }; cv3.setPointerCapture(ev.pointerId); });
+cv3.addEventListener("pointermove", (ev) => { if (!TD.drag) return; TD.yaw = TD.drag.yaw - (ev.clientX - TD.drag.x) * 0.01; TD.pitch = Math.max(-1.2, Math.min(1.4, TD.drag.pitch + (ev.clientY - TD.drag.y) * 0.01)); draw3d(); });
+cv3.addEventListener("pointerup", () => { TD.drag = null; });
+$("ex").addEventListener("input", () => { TD.ex = +$("ex").value / 100; draw3d(); });
+$("bs").addEventListener("input", () => { TD.B = +$("bs").value; buildCopies(); draw3d(); });
+$("spin").onclick = () => { TD.spin = !TD.spin; $("spin").textContent = TD.spin ? "Pause" : "Spin"; };
+
+/* ---------------- ladder ---------------- */
+const LADDER = [
+  ["A line (1D grid)", "Yes, always.", "Newman, 1977"],
+  ["The plane (2D grid)", "Yes, always.", "Bhattacharya, 2016; Greenfeld–Tao gave a sharper version"],
+  ["3D grid and solid 3D space", "No. One tile tiles, but never fully periodically.", "OpenAI model, 2026"],
+  ["Very high dimensions", "No.", "Greenfeld–Tao, 2022 (the first counterexample)"],
+  ["Solid plane, arbitrary shapes", "Not settled by the grid results. Polygons with rational corners are known to work.", "Noted in the paper"],
+];
+function renderLadder() { const tb = $("ladder-t"); tb.textContent = ""; LADDER.forEach((r) => { const tr = document.createElement("tr"); r.forEach((t, i) => { const td = document.createElement("td"); td.textContent = t; if (i === 2) td.className = "label"; tr.appendChild(td); }); tb.appendChild(tr); }); }
+
+/* ---------------- boot ---------------- */
+wireFold("proof-fold"); renderLadder(); updateLine(); updateSudoku(); buildCopies(); draw3d(); requestAnimationFrame(loop);
+onResize(() => { drawStrip(); drawDigits(); drawWord(); draw3d(); });
+handshake();
+})();
+</script>
+</body>
+</html>

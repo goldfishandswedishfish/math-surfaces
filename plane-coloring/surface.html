@@ -1,0 +1,588 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Coloring the plane</title>
+<style>
+:root {
+  color-scheme: light dark;
+  --background: #f5f5f5;
+  --foreground: #141414;
+  --card: #ffffff;
+  --muted: #f2f2f2;
+  --muted-foreground: #6b6b6b;
+  --faint-foreground: #808080;
+  --border: #e3e3e3;
+  --border-strong: #dbdbdb;
+  --hairline: rgb(0 0 0 / 0.07);
+  --accent: rgb(0 0 0 / 0.03);
+  --primary: oklch(0.50 0.15 278);
+  --destructive: #cf4415;
+  --success: #4b7c0b;
+  --radius: 0.625rem;
+  --mono: ui-monospace, "Berkeley Mono", SFMono-Regular, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #141414;
+    --foreground: #e2e2e2;
+    --card: #262626;
+    --muted: #111111;
+    --muted-foreground: #a0a0a0;
+    --faint-foreground: #737373;
+    --border: #202020;
+    --border-strong: #242424;
+    --hairline: rgb(226 226 226 / 0.06);
+    --accent: rgb(255 255 255 / 0.03);
+    --primary: oklch(0.68 0.14 278);
+    --destructive: #f0663a;
+    --success: #8fc24a;
+  }
+}
+[hidden] { display: none !important; }
+* { box-sizing: border-box; }
+html, body { margin: 0; background: transparent; }
+body { font-family: Inter, ui-sans-serif, system-ui, sans-serif; font-size: 14px; line-height: 1.55; color: var(--foreground); -webkit-font-smoothing: antialiased; }
+h2 { font-size: 18px; font-weight: 400; letter-spacing: -0.015em; margin: 0 0 6px; }
+p { margin: 0 0 10px; max-width: 72ch; }
+.muted { color: var(--muted-foreground); }
+.faint { color: var(--faint-foreground); }
+.mono { font-family: var(--mono); font-size: 13px; }
+.label { font-size: 12px; color: var(--muted-foreground); }
+em { font-style: normal; color: var(--primary); }
+.bad { color: var(--destructive); }
+.good { color: var(--success); }
+section { padding: 28px 0; border-top: 1px solid var(--hairline); }
+section:first-of-type { border-top: 0; padding-top: 4px; }
+.card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); }
+
+.toolbar { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 14px 0 12px; }
+.seg { display: inline-flex; flex-wrap: wrap; border: 1px solid var(--border-strong); border-radius: 5px; overflow: hidden; }
+.seg button + button { border-left: 1px solid var(--border-strong); }
+button { font: inherit; font-size: 13px; color: var(--foreground); background: var(--card); border: 0; padding: 4px 10px; cursor: pointer; }
+button:hover { background: var(--accent); }
+button[aria-pressed="true"] { background: var(--muted); color: var(--primary); }
+.btn { border: 1px solid var(--border-strong); border-radius: 5px; }
+button:focus-visible, input:focus-visible { outline: 2px solid var(--primary); outline-offset: 1px; }
+.spacer { flex: 1; }
+.slider { display: inline-flex; gap: 8px; align-items: center; font-size: 13px; color: var(--muted-foreground); }
+input[type=range] { accent-color: var(--primary); width: 140px; }
+
+.lede { font-size: 16px; letter-spacing: -0.01em; max-width: 68ch; margin-bottom: 18px; }
+.why { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.why .card { padding: 14px; }
+.why h3, .step h3 { font-size: 13px; font-weight: 500; margin: 0 0 4px; }
+.why p { font-size: 13px; color: var(--muted-foreground); margin: 0; }
+.steps { list-style: none; margin: 10px 0 0; padding: 0; border-top: 1px solid var(--hairline); }
+.step { display: grid; grid-template-columns: 28px minmax(0, 1.5fr) minmax(0, 1fr); gap: 4px 16px; padding: 12px 0; border-bottom: 1px solid var(--hairline); }
+.step .n { font-family: var(--mono); font-size: 13px; color: var(--primary); padding-top: 1px; }
+.step p { font-size: 13px; margin: 0; }
+.step .term { font-family: var(--mono); font-size: 12px; color: var(--muted-foreground); line-height: 1.5; }
+.step .see { font-size: 12px; color: var(--primary); margin-top: 4px; }
+.aside { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin-top: 18px; }
+.aside p { font-size: 13px; color: var(--muted-foreground); margin: 0; }
+.aside h3 { font-size: 12px; font-weight: 400; margin: 0 0 4px; }
+
+details.fold { margin: 22px 0 0; border-top: 1px solid var(--hairline); border-bottom: 1px solid var(--hairline); }
+details.fold > summary { list-style: none; display: flex; align-items: center; gap: 10px; padding: 12px 0; cursor: pointer; user-select: none; }
+details.fold > summary::-webkit-details-marker { display: none; }
+details.fold > summary:hover { background: var(--accent); }
+.fold-title { font-size: 18px; letter-spacing: -0.015em; }
+.fold-hint { margin-left: auto; font-size: 12px; color: var(--muted-foreground); }
+.chev { width: 7px; height: 7px; border-right: 1.5px solid var(--muted-foreground); border-bottom: 1.5px solid var(--muted-foreground); transform: rotate(-45deg); margin: 0 2px; flex: none; }
+details.fold[open] .chev { transform: rotate(45deg); }
+details.fold[open] { padding-bottom: 18px; }
+@media (prefers-reduced-motion: no-preference) { .chev { transition: transform 120ms; } }
+
+.grid2 { display: grid; grid-template-columns: minmax(0, 1fr) 260px; gap: 12px; }
+.panel { position: relative; padding: 10px; }
+.panel .cap { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin-bottom: 4px; }
+canvas { display: block; width: 100%; touch-action: none; }
+.wide { aspect-ratio: 16 / 9; }
+.square { aspect-ratio: 1 / 1; }
+.readout { padding: 12px; display: flex; flex-direction: column; gap: 10px; }
+.kv { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.big { font-family: var(--mono); font-size: 26px; letter-spacing: -0.02em; }
+.rule { height: 1px; background: var(--hairline); }
+.note { font-size: 13px; color: var(--muted-foreground); }
+.note b { font-weight: 500; color: var(--foreground); }
+.paint { display: grid; grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr) 260px; gap: 12px; }
+.swatches { display: inline-flex; gap: 4px; }
+.swatches button { width: 24px; height: 24px; padding: 0; border-radius: 5px; border: 1px solid var(--border-strong); }
+.swatches button[aria-pressed="true"] { outline: 2px solid var(--primary); outline-offset: 1px; }
+.spindle { display: grid; grid-template-columns: minmax(0, 1fr) 260px; gap: 12px; }
+.spindle canvas { aspect-ratio: 16 / 9; max-height: 420px; cursor: pointer; }
+
+table { border-collapse: collapse; width: 100%; font-size: 13px; margin-top: 14px; }
+th { font-weight: 400; color: var(--muted-foreground); font-size: 12px; text-align: left; padding: 6px 10px; border-bottom: 1px solid var(--border); }
+td { padding: 6px 10px; border-bottom: 1px solid var(--hairline); vertical-align: top; }
+td.mono, th.num { text-align: right; }
+tr:hover td { background: var(--accent); }
+.range { position: relative; height: 8px; background: var(--muted); border-radius: 2px; min-width: 120px; }
+.range i { position: absolute; top: 0; bottom: 0; border-radius: 2px; background: var(--primary); }
+.range i.open { background: var(--border-strong); }
+details.more { margin-top: 12px; font-size: 13px; color: var(--muted-foreground); }
+details.more summary { cursor: pointer; color: var(--foreground); }
+.sources { font-size: 12px; color: var(--faint-foreground); }
+.sources code { font-family: var(--mono); font-size: 12px; }
+
+@media (max-width: 860px) {
+  .why, .aside { grid-template-columns: 1fr; }
+  .step { grid-template-columns: 28px minmax(0, 1fr); }
+  .step .term { grid-column: 2; }
+  .grid2, .spindle { grid-template-columns: 1fr; }
+  .paint { grid-template-columns: 1fr 1fr; }
+  .paint .readout { grid-column: 1 / -1; }
+}
+@media (max-width: 520px) { .paint { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+
+<!-- ============ OVERVIEW ============ -->
+<section id="overview">
+  <p class="lede">Color every point of a flat, endless plane so that any two points <em>exactly 1 apart</em> get different colors. How few colors can you get away with? Since 1950 the answer has been known to lie somewhere from 4 to 7. In 2018 it was pushed to at least 5. In September 2026, a proof produced by an OpenAI model ruled out 5 as well. The answer is now <em>6 or 7</em>.</p>
+
+  <div class="why">
+    <div class="card">
+      <h3>The question</h3>
+      <p>Imagine a ruler exactly 1 unit long. Wherever you drop it on your colored plane, its two ends must land on different colors. The fewest colors that make this possible is called the <i>chromatic number of the plane</i>. Edward Nelson asked about it in 1950. It's known as the Hadwiger–Nelson problem.</p>
+    </div>
+    <div class="card">
+      <h3>Why it matters</h3>
+      <p>It's one of the most famous easy-to-state open problems in mathematics, sitting where geometry, combinatorics and set theory meet. Shelah and Soifer showed that for close cousins of this question, the answer can even depend on which axioms of set theory you assume. For 68 years nobody could push the lower bound past 4.</p>
+    </div>
+    <div class="card">
+      <h3>Why it was hard</h3>
+      <p>Earlier progress came from finding a finite set of points that can't be colored, like the 1,581-point graph that ruled out 4 colors. Doing the same for 5 colors would need a far bigger graph, and computer searches never found one. A coloring can also be infinitely chaotic, with no shapes or borders to reason about at all.</p>
+    </div>
+  </div>
+
+  <details class="fold" id="proof-fold">
+  <summary><span class="chev" aria-hidden="true"></span><span class="fold-title">How the proof works, in four moves</span><span class="fold-hint">show</span></summary>
+  <p class="muted" style="font-size:13px; margin-top:6px">The proof assumes a 5-coloring exists and shows that leads to a contradiction. Plain language is on the left, the paper's own terms on the right.</p>
+  <ol class="steps">
+    <li class="step"><span class="n">1</span>
+      <div><h3>Tame any coloring</h3><p>A coloring might be pure chaos: no regions, no borders, colors scattered like dust. The proof shows that if any valid 5-coloring exists, a well-behaved one does too, breaking the rule only on a sliver so thin it has zero area. It gets there by averaging the chaotic coloring over every shift and rotation, then proving the unpicturable part of that average can be thrown away.</p></div>
+      <div class="term">Transfer theorem: a proper k-coloring exists ⇔ a weak measurable k-coloring exists<br>Amenable averaging · Haar rigidity of rotation-invariant laws (Furstenberg–Zimmer)</div></li>
+    <li class="step"><span class="n">2</span>
+      <div><h3>Look around every point</h3><p>Stand at a point and look at the circle of radius 1 around you. Zoom in on each direction and list which colors you see there; call that list the <i>palette</i>. Using how waves spread around a circle, the proof shows that in almost every direction the palette holds at most two colors.</p><div class="see">Try it: hover the plane below. The red arcs are where your own color sits 1 away.</div></div>
+      <div class="term">Palettes as weak-* limits of angular samples<br>≤ 2 labels a.e. · Fourier decay of circle measure</div></li>
+    <li class="step"><span class="n">3</span>
+      <div><h3>Build the borders</h3><p>The proof never assumes the colors meet along neat borders. It constructs connected borders itself, by blurring the colors slightly and tracking where they change. Walking a loop around a special point then passes through a cycle of 3, 4 or 5 colors. Each border also bans both of its colors from a band of points about 1 away from it.</p></div>
+      <div class="term">Disk-average smoothing · cyclic centers<br>Connected continua K<sub>j</sub> with exclusion region Δ(K<sub>j</sub>) = {z : min|z−q| &lt; 1 &lt; max|z−q|}</div></li>
+    <li class="step"><span class="n">4</span>
+      <div><h3>Rule out every cycle</h3><p>A 5-color cycle forces impossible patterns of colors around the circle. A 4-color cycle breaks a simple odd/even count. A 3-color cycle forces six alternating wedges, which leaves an open patch using only 3 colors. But a small 7-point figure, the Moser spindle, fits in that patch and can't be colored with 3. Every case fails, so no 5-coloring exists.</p><div class="see">Try it: color the spindle at the bottom of the page.</div></div>
+      <div class="term">Angular words (5-cycle) · antipodal parity (4-cycle)<br>Six alternating sectors + rational placement of the Moser graph (3-cycle)</div></li>
+  </ol>
+  <div class="aside">
+    <div><h3>What's still open</h3><p>Isbell's hexagon coloring shows 7 colors always work. The answer is 6 or 7, and nobody yet knows which. The paper notes that a May 2026 claim of exactly 7 rests on a false assumption.</p></div>
+    <div><h3>Why "any coloring" matters</h3><p>Under extra rules the bar was already higher: Falconer proved in 1981 that colorings with measurable regions need 5, and Townsend showed that map-like colorings need 6. The new result needs no such rule. It also implies some finite set of points forces 6 colors, but the proof never names one.</p></div>
+    <div><h3>How sure is this?</h3><p>The repository reports Lean formalizations of both halves: no 5-coloring exists, and the 7-coloring works including its borders. Lean is a proof checker that verifies each step mechanically. The repo also cautions that results may still contain issues while review continues.</p></div>
+  </div>
+  </details>
+</section>
+
+<!-- ============ 1. EXPLORE ============ -->
+<section id="explore">
+  <h2>Try it: drop a ruler on a coloring</h2>
+  <p>Below are some ways to color the plane with tiles. Hover anywhere: the circle shows every point exactly 1 away from your cursor. Wherever that circle crosses <span class="bad">your own color</span>, the rule is broken. A good coloring has no red anywhere, for any point you pick.</p>
+  <p class="muted">Isbell's 7-color hexagons work when every tile is narrower than 1 (so no ruler fits inside one) but same-colored tiles sit more than 1 apart. Drag the tile size and find the window where the clash rate hits zero.</p>
+
+  <div class="toolbar">
+    <div class="seg" role="group" aria-label="Coloring" id="schemes"></div>
+    <span class="spacer"></span>
+    <label class="slider">Tile size <input id="size" type="range" min="0" max="1000" value="500" aria-label="Tile size"> <span class="mono" id="size-v"></span></label>
+  </div>
+
+  <div class="grid2">
+    <div class="card panel">
+      <div class="cap"><span class="label" id="plane-cap">The plane</span><span class="label faint">hover to place the ruler · grid squares are 1 × 1</span></div>
+      <canvas id="cvPlane" class="wide"></canvas>
+    </div>
+    <div class="card readout">
+      <div class="kv"><span class="label">Colors used</span><span class="mono" id="r-k">–</span></div>
+      <div class="kv"><span class="label">Tile size</span><span class="mono" id="r-s">–</span></div>
+      <div class="kv"><span class="label">Works when size is in</span><span class="mono" id="r-win">–</span></div>
+      <div class="rule"></div>
+      <div><div class="label">Clash rate</div><div class="big" id="r-bad">–</div><div class="label">share of randomly dropped rulers whose ends match (200,000 drops)</div></div>
+      <div class="rule"></div>
+      <div class="kv"><span class="label">At your cursor</span><span class="mono" id="r-here">–</span></div>
+      <div class="note" id="r-note"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 2. PAINT ============ -->
+<section id="paint">
+  <h2>Your turn: paint a tile with five colors</h2>
+  <p>Paint the square on the left. It repeats forever in every direction, like wallpaper, to color the whole plane on the right. Try to make the clash rate zero. You can't: the theorem says every 5-coloring of the plane has clashing rulers, and for repeating patterns like this one the clash rate can't even get arbitrarily close to zero.</p>
+
+  <div class="toolbar">
+    <div class="seg" role="group" aria-label="Number of colors" id="kseg"></div>
+    <span class="swatches" id="swatches" role="group" aria-label="Brush color"></span>
+    <span class="spacer"></span>
+    <label class="slider">Tile width <input id="L" type="range" min="15" max="45" value="30" aria-label="Tile width"> <span class="mono" id="L-v"></span></label>
+  </div>
+
+  <div class="paint">
+    <div class="card panel">
+      <div class="cap"><span class="label">Your tile</span><span class="label faint">click or drag to paint</span></div>
+      <canvas id="cvTile" class="square"></canvas>
+    </div>
+    <div class="card panel">
+      <div class="cap"><span class="label">Repeated across the plane</span><span class="label faint">hover for the ruler</span></div>
+      <canvas id="cvWall" class="square"></canvas>
+    </div>
+    <div class="card readout">
+      <div><div class="label">Clash rate</div><div class="big" id="p-bad">–</div></div>
+      <div class="kv"><span class="label">Your lowest with <span id="p-k1">5</span> colors</span><span class="mono" id="p-best">–</span></div>
+      <div class="rule"></div>
+      <div style="display:flex; gap:6px; flex-wrap:wrap">
+        <button class="btn" id="p-improve">Let the computer try</button>
+        <button class="btn" id="p-random">Random</button>
+        <button class="btn" id="p-stripes">Stripes</button>
+      </div>
+      <div class="note" id="p-note">The computer's search keeps recoloring one square at a time whenever it lowers the clash rate. With 5 colors it always gets stuck above zero.</div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 3. SPINDLE ============ -->
+<section id="spindle">
+  <h2>The 7-point figure at the end of the proof</h2>
+  <p>The <i>Moser spindle</i> (1961) is two diamonds, each made of two equilateral triangles with sides of length 1, hinged at one corner and turned until their far tips sit exactly 1 apart. Every line drawn is length 1, so its ends must get different colors. Click a point to change its color. Can you do it with three colors?</p>
+
+  <div class="spindle">
+    <div class="card panel">
+      <div class="cap"><span class="label">Moser spindle · 7 points, 11 unit-length links</span><span class="label faint">click a point to cycle its color</span></div>
+      <canvas id="cvSp"></canvas>
+    </div>
+    <div class="card readout">
+      <div class="seg" role="group" aria-label="Colors available" id="sp-k"></div>
+      <div class="kv"><span class="label">Clashing links</span><span class="mono" id="sp-bad">–</span></div>
+      <div class="kv"><span class="label">Uncolored points</span><span class="mono" id="sp-un">–</span></div>
+      <div class="rule"></div>
+      <button class="btn" id="sp-check">Check every possible coloring</button>
+      <div class="note" id="sp-note">Hint: each diamond forces its far tip to match the hinge.</div>
+      <div class="rule"></div>
+      <button class="btn" id="sp-clear">Clear</button>
+    </div>
+  </div>
+  <p class="muted" style="margin-top:14px">In the proof's last move, a 3-color cycle forces a patch of the plane that uses only three colors. The paper places all seven spindle points inside that patch with exact coordinates. Since the spindle needs a fourth color, the patch can't exist.</p>
+</section>
+
+<!-- ============ 4. HISTORY ============ -->
+<section id="history">
+  <h2>75 years of narrowing it down</h2>
+  <table aria-label="History of bounds on the chromatic number of the plane">
+    <thead><tr><th>Year</th><th>Who</th><th>What they showed</th><th class="num">Known range</th><th>From 1 to 8</th></tr></thead>
+    <tbody id="hist"></tbody>
+  </table>
+</section>
+
+<section>
+  <p class="sources">Source: <code>openai/math</code>, family 158, "The Euclidean plane is not five-colorable" (Sept 23, 2026). The repository reports both the 5-color impossibility and the 7-coloring formalized in Lean (<code>lean/docs/158.md</code>). Clash rates here are Monte Carlo estimates. The interactive pieces illustrate the problem, not the paper's proof technique.</p>
+</section>
+
+<script>
+(function () {
+"use strict";
+const $ = (id) => document.getElementById(id);
+const css = (n) => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const dark = matchMedia("(prefers-color-scheme: dark)");
+let C = {};
+const PAL_L = ["#8fb3ff", "#ffb38a", "#9fd8a8", "#f2a7c8", "#ffd966", "#b8a4f0", "#8dd5d8", "#d9c2a0", "#c4c4c4"];
+const PAL_D = ["#3d5a99", "#9a5a36", "#3f7a4c", "#8a4766", "#8f7a2a", "#5d4f99", "#2f7a7d", "#7a6648", "#555555"];
+let PAL = PAL_L, PALRGB = [];
+function hexRgb(h) { const n = parseInt(h.slice(1), 16); return [n >> 16, (n >> 8) & 255, n & 255]; }
+function readColors() {
+  C = { fg: css("--foreground"), mut: css("--muted-foreground"), faint: css("--faint-foreground"), border: css("--border-strong"),
+        hair: css("--hairline"), primary: css("--primary"), bad: css("--destructive"), card: css("--card") };
+  PAL = dark.matches ? PAL_D : PAL_L; PALRGB = PAL.map(hexRgb);
+}
+readColors();
+function fitCanvas(cv) {
+  const r = cv.getBoundingClientRect(), d = window.devicePixelRatio || 1;
+  const w = Math.max(10, Math.round(r.width * d)), h = Math.max(10, Math.round(r.height * d));
+  if (cv.width !== w || cv.height !== h) { cv.width = w; cv.height = h; }
+  const ctx = cv.getContext("2d"); ctx.setTransform(d, 0, 0, d, 0, 0);
+  return { ctx, w: r.width, h: r.height, d };
+}
+const fmtPct = (x) => (x === 0 ? "0%" : x < 0.0001 ? "<0.01%" : (x * 100).toFixed(2) + "%");
+const mod = (a, m) => ((a % m) + m) % m;
+function rng(seed) { let s = seed >>> 0; return () => { s = (s + 0x6D2B79F5) >>> 0; let t = s; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+
+/* ---------------- colorings ---------------- */
+const S3 = Math.sqrt(3);
+function hexAxial(x, y, r) { // pointy-top hexagons, circumradius r
+  const qf = (S3 / 3 * x - y / 3) / r, rf = (2 / 3 * y) / r, sf = -qf - rf;
+  let q = Math.round(qf), rr = Math.round(rf), s = Math.round(sf);
+  const dq = Math.abs(q - qf), dr = Math.abs(rr - rf), ds = Math.abs(s - sf);
+  if (dq > dr && dq > ds) q = -rr - s; else if (dr > ds) rr = -q - s;
+  return [q, rr];
+}
+const SCHEMES = [
+  { id: "hex7", name: "7 hexagons", k: 7, min: 0.25, max: 0.65, def: 0.45, win: [1 / (Math.sqrt(21) - 2), 0.5], unit: "hexagon radius",
+    color: (x, y, s) => { const [q, r] = hexAxial(x, y, s); return mod(q + 3 * r, 7); },
+    blurb: "Isbell's coloring. Each hexagon is less than 1 across, and same-colored hexagons sit more than 1 apart. This is why 7 colors are always enough." },
+  { id: "sq9", name: "9 squares", k: 9, min: 0.3, max: 0.9, def: 0.6, win: [0.5, Math.SQRT1_2], unit: "square side",
+    color: (x, y, s) => mod(Math.floor(x / s), 3) + 3 * mod(Math.floor(y / s), 3),
+    blurb: "A 3 × 3 checkerboard pattern. It works too, but needs 9 colors." },
+  { id: "hex4", name: "4 hexagons", k: 4, min: 0.25, max: 0.65, def: 0.45, win: null, unit: "hexagon radius",
+    color: (x, y, s) => { const [q, r] = hexAxial(x, y, s); return mod(q, 2) + 2 * mod(r, 2); },
+    blurb: "Same tiles, fewer colors. Same-colored hexagons are now too close together at every size." },
+  { id: "stripes5", name: "5 stripes", k: 5, min: 0.1, max: 0.6, def: 0.3, win: null, unit: "stripe width",
+    color: (x, y, s) => mod(Math.floor(x / s), 5),
+    blurb: "Stripes always fail: a ruler laid along a stripe stays in one color. The 2026 result says every 5-coloring fails somewhere, however clever." },
+];
+let scheme = SCHEMES[0], size = scheme.def;
+const sizeFromSlider = () => scheme.min + (scheme.max - scheme.min) * (+$("size").value / 1000);
+
+const N_SAMPLES = 200000;
+function clashRate(colorFn, s, n, seed) {
+  const rand = rng(seed); let bad = 0;
+  for (let i = 0; i < n; i++) {
+    const x = rand() * 40 - 20, y = rand() * 40 - 20, t = rand() * 2 * Math.PI;
+    if (colorFn(x, y, s) === colorFn(x + Math.cos(t), y + Math.sin(t), s)) bad++;
+  }
+  return bad / n;
+}
+
+/* ---------------- plane view ---------------- */
+const P = { hover: null, img: null, key: "" };
+function planeView(w) { const units = w < 500 ? 4.5 : 7.5; const sc = w / units; return { sc, X: (x) => w / 2 + x * sc, Y: (y, h) => h / 2 - y * sc, ix: (px) => (px - w / 2) / sc, iy: (py, h) => (h / 2 - py) / sc }; }
+function renderField(cv, colorFn, s, v, w, h, d) {
+  const W = Math.round(w * d), H = Math.round(h * d);
+  const img = new ImageData(W, H), a = img.data;
+  for (let py = 0; py < H; py++) {
+    const y = v.iy(py / d, h);
+    for (let px = 0; px < W; px++) {
+      const c = PALRGB[colorFn(v.ix(px / d), y, s)], o = (py * W + px) * 4;
+      a[o] = c[0]; a[o + 1] = c[1]; a[o + 2] = c[2]; a[o + 3] = 255;
+    }
+  }
+  return img;
+}
+function drawRuler(ctx, colorFn, s, p, X, Y, sc) {
+  const c0 = colorFn(p[0], p[1], s), N = 720; let same = 0;
+  ctx.lineWidth = 1.25; ctx.strokeStyle = C.fg; ctx.globalAlpha = 0.55;
+  ctx.beginPath(); ctx.arc(X(p[0]), Y(p[1]), sc, 0, 2 * Math.PI); ctx.stroke(); ctx.globalAlpha = 1;
+  ctx.lineWidth = 4; ctx.strokeStyle = C.bad; ctx.lineCap = "butt";
+  let run = -1, firstWorst = null;
+  for (let i = 0; i <= N; i++) {
+    const t = (i / N) * 2 * Math.PI, hit = i < N && colorFn(p[0] + Math.cos(t), p[1] + Math.sin(t), s) === c0;
+    if (hit) { same++; if (run < 0) run = i; if (!firstWorst) firstWorst = t; }
+    if ((!hit || i === N) && run >= 0) { ctx.beginPath(); ctx.arc(X(p[0]), Y(p[1]), sc, -((i) / N) * 2 * Math.PI, -(run / N) * 2 * Math.PI); ctx.stroke(); run = -1; }
+  }
+  const t = firstWorst != null ? firstWorst : Math.PI / 5;
+  ctx.lineWidth = 1.5; ctx.strokeStyle = firstWorst != null ? C.bad : C.fg;
+  ctx.beginPath(); ctx.moveTo(X(p[0]), Y(p[1])); ctx.lineTo(X(p[0] + Math.cos(t)), Y(p[1] + Math.sin(t))); ctx.stroke();
+  for (const q of [p, [p[0] + Math.cos(t), p[1] + Math.sin(t)]]) { ctx.fillStyle = C.card; ctx.strokeStyle = C.fg; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(X(q[0]), Y(q[1]), 4, 0, 7); ctx.fill(); ctx.stroke(); }
+  return same / N;
+}
+function drawPlane() {
+  const cv = $("cvPlane"), { ctx, w, h, d } = fitCanvas(cv), v = planeView(w);
+  const key = [scheme.id, size, w, h, d, dark.matches].join("|");
+  if (P.key !== key) { P.img = renderField(cv, scheme.color, size, v, w, h, d); P.key = key; }
+  ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.putImageData(P.img, 0, 0); ctx.restore();
+  // unit grid
+  ctx.strokeStyle = dark.matches ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.10)"; ctx.lineWidth = 1;
+  for (let gx = Math.ceil(v.ix(0)); gx <= v.ix(w); gx++) { ctx.beginPath(); ctx.moveTo(v.X(gx), 0); ctx.lineTo(v.X(gx), h); ctx.stroke(); }
+  for (let gy = Math.ceil(v.iy(h, h)); gy <= v.iy(0, h); gy++) { ctx.beginPath(); ctx.moveTo(0, v.Y(gy, h)); ctx.lineTo(w, v.Y(gy, h)); ctx.stroke(); }
+  const p = P.hover || [0.13, 0.21];
+  const frac = drawRuler(ctx, scheme.color, size, p, v.X, (y) => v.Y(y, h), v.sc);
+  $("r-here").textContent = frac > 0 ? fmtPct(frac) + " of circle clashes" : "no clash";
+  $("r-here").className = "mono " + (frac > 0 ? "bad" : "good");
+}
+let badTimer = 0;
+function updateExplore(full) {
+  size = sizeFromSlider();
+  $("size-v").textContent = size.toFixed(3);
+  $("r-k").textContent = scheme.k;
+  $("r-s").textContent = size.toFixed(3) + " (" + scheme.unit + ")";
+  $("r-win").textContent = scheme.win ? scheme.win[0].toFixed(3) + " – " + scheme.win[1].toFixed(3) : "never";
+  drawPlane();
+  if (full !== false) {
+    clearTimeout(badTimer);
+    $("r-bad").textContent = "…";
+    badTimer = setTimeout(() => {
+      const b = clashRate(scheme.color, size, N_SAMPLES, 7);
+      const el = $("r-bad"); el.textContent = fmtPct(b); el.className = "big " + (b === 0 ? "good" : "bad");
+      const inWin = scheme.win && size > scheme.win[0] && size < scheme.win[1];
+      $("r-note").innerHTML = "";
+      const n = $("r-note"), b1 = document.createElement("b");
+      b1.textContent = b === 0 ? "No clashes found. " : inWin ? "Almost: only borders clash. " : "Clashes. ";
+      n.appendChild(b1); n.appendChild(document.createTextNode(scheme.blurb));
+    }, 60);
+  }
+}
+function renderSchemes() {
+  const seg = $("schemes"); seg.textContent = "";
+  SCHEMES.forEach((s) => {
+    const b = document.createElement("button"); b.textContent = s.name; b.setAttribute("aria-pressed", String(s === scheme));
+    b.onclick = () => { scheme = s; $("size").value = String(Math.round(((s.def - s.min) / (s.max - s.min)) * 1000)); renderSchemes(); updateExplore(); };
+    seg.appendChild(b);
+  });
+}
+$("size").addEventListener("input", () => updateExplore());
+function hoverPlane(ev) {
+  const cv = $("cvPlane"), r = cv.getBoundingClientRect(), v = planeView(r.width);
+  P.hover = [v.ix(ev.clientX - r.left), v.iy(ev.clientY - r.top, r.height)];
+  drawPlane();
+}
+$("cvPlane").addEventListener("pointermove", hoverPlane);
+$("cvPlane").addEventListener("pointerdown", hoverPlane);
+
+/* ---------------- painter ---------------- */
+const G = 12;
+const T = { k: 5, brush: 0, L: 3, cells: new Int8Array(G * G), W: null, best: {}, hover: null, painting: false, running: false };
+function buildWeights() { // W[i*G*G+j] = P(random point in cell i, unit step lands in cell j), over whole tile
+  const n = G * G, W = new Float64Array(n * n), h = T.L / G, m = 600, rand = rng(11);
+  for (let i = 0; i < n; i++) {
+    const cx = (i % G) * h, cy = Math.floor(i / G) * h;
+    for (let s = 0; s < m; s++) {
+      const x = cx + rand() * h, y = cy + rand() * h, t = rand() * 2 * Math.PI;
+      const jx = Math.floor(mod(x + Math.cos(t), T.L) / h) % G, jy = Math.floor(mod(y + Math.sin(t), T.L) / h) % G;
+      W[i * n + jy * G + jx] += 1 / (m * n);
+    }
+  }
+  T.W = W;
+}
+function tileBad() { const n = G * G, W = T.W, c = T.cells; let b = 0; for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) if (c[i] === c[j]) b += W[i * n + j]; return b; }
+function costOf(i, col) { const n = G * G, W = T.W, c = T.cells; let b = 0; for (let j = 0; j < n; j++) if (j !== i && c[j] === col) b += W[i * n + j] + W[j * n + i]; return b; }
+const tileColor = (x, y) => { const h = T.L / G; return T.cells[(Math.floor(mod(y, T.L) / h) % G) * G + (Math.floor(mod(x, T.L) / h) % G)]; };
+function drawTile() {
+  const { ctx, w } = fitCanvas($("cvTile")), cs = w / G;
+  for (let i = 0; i < G * G; i++) { ctx.fillStyle = PAL[T.cells[i]]; ctx.fillRect((i % G) * cs, w - (Math.floor(i / G) + 1) * cs, cs + 0.5, cs + 0.5); }
+  ctx.strokeStyle = dark.matches ? "rgba(255,255,255,0.10)" : "rgba(0,0,0,0.08)"; ctx.lineWidth = 1;
+  for (let g = 1; g < G; g++) { ctx.beginPath(); ctx.moveTo(g * cs, 0); ctx.lineTo(g * cs, w); ctx.moveTo(0, g * cs); ctx.lineTo(w, g * cs); ctx.stroke(); }
+  // unit ruler for scale
+  const sc = w / T.L; ctx.strokeStyle = C.fg; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(8, w - 10); ctx.lineTo(8 + sc, w - 10); ctx.stroke();
+  ctx.fillStyle = C.fg; ctx.font = "11px " + css("--mono"); ctx.fillText("length 1", 8, w - 16);
+}
+function drawWall() {
+  const { ctx, w, h } = fitCanvas($("cvWall")), units = Math.max(T.L * 2.2, 6), sc = w / units;
+  const X = (x) => w / 2 + x * sc, Y = (y) => h / 2 - y * sc, cs = (T.L / G) * sc;
+  const x0 = -units / 2, y0 = -units / 2, hh = T.L / G;
+  for (let gy = Math.floor(y0 / hh) - 1; gy * hh < -y0 + hh; gy++) for (let gx = Math.floor(x0 / hh) - 1; gx * hh < -x0 + hh; gx++) {
+    ctx.fillStyle = PAL[tileColor((gx + 0.5) * hh, (gy + 0.5) * hh)]; ctx.fillRect(X(gx * hh), Y((gy + 1) * hh), cs + 0.6, cs + 0.6);
+  }
+  ctx.strokeStyle = C.fg; ctx.globalAlpha = 0.35; ctx.lineWidth = 1; ctx.setLineDash([3, 3]);
+  for (let k = Math.ceil(x0 / T.L); k * T.L <= -x0; k++) { ctx.beginPath(); ctx.moveTo(X(k * T.L), 0); ctx.lineTo(X(k * T.L), h); ctx.stroke(); }
+  for (let k = Math.ceil(y0 / T.L); k * T.L <= -y0; k++) { ctx.beginPath(); ctx.moveTo(0, Y(k * T.L)); ctx.lineTo(w, Y(k * T.L)); ctx.stroke(); }
+  ctx.setLineDash([]); ctx.globalAlpha = 1;
+  drawRuler(ctx, (x, y) => tileColor(x, y), 0, T.hover || [T.L * 0.37, T.L * 0.41], X, Y, sc);
+}
+function updatePaint() {
+  const b = tileBad();
+  const el = $("p-bad"); el.textContent = fmtPct(b); el.className = "big " + (b < 1e-9 ? "good" : "bad");
+  const prev = T.best[T.k]; if (prev == null || b < prev) T.best[T.k] = b;
+  $("p-best").textContent = fmtPct(T.best[T.k]); $("p-k1").textContent = T.k;
+  drawTile(); drawWall();
+}
+function renderPaintControls() {
+  const seg = $("kseg"); seg.textContent = "";
+  [4, 5, 6, 7].forEach((k) => { const b = document.createElement("button"); b.textContent = k + " colors"; b.setAttribute("aria-pressed", String(k === T.k));
+    b.onclick = () => { T.k = k; for (let i = 0; i < G * G; i++) if (T.cells[i] >= k) T.cells[i] = i % k; if (T.brush >= k) T.brush = 0; renderPaintControls(); updatePaint(); }; seg.appendChild(b); });
+  const sw = $("swatches"); sw.textContent = "";
+  for (let c = 0; c < T.k; c++) { const b = document.createElement("button"); b.style.background = PAL[c]; b.setAttribute("aria-label", "Color " + (c + 1)); b.setAttribute("aria-pressed", String(c === T.brush)); b.onclick = () => { T.brush = c; renderPaintControls(); }; sw.appendChild(b); }
+}
+function paintAt(ev) {
+  const r = $("cvTile").getBoundingClientRect(), cs = r.width / G;
+  const gx = Math.floor((ev.clientX - r.left) / cs), gy = G - 1 - Math.floor((ev.clientY - r.top) / cs);
+  if (gx < 0 || gy < 0 || gx >= G || gy >= G) return;
+  const i = gy * G + gx; if (T.cells[i] !== T.brush) { T.cells[i] = T.brush; updatePaint(); }
+}
+$("cvTile").addEventListener("pointerdown", (ev) => { T.painting = true; $("cvTile").setPointerCapture(ev.pointerId); paintAt(ev); });
+$("cvTile").addEventListener("pointermove", (ev) => { if (T.painting) paintAt(ev); });
+$("cvTile").addEventListener("pointerup", () => { T.painting = false; });
+$("cvWall").addEventListener("pointermove", (ev) => { const r = $("cvWall").getBoundingClientRect(), units = Math.max(T.L * 2.2, 6), sc = r.width / units; T.hover = [(ev.clientX - r.left - r.width / 2) / sc, (r.height / 2 - (ev.clientY - r.top)) / sc]; drawWall(); });
+$("L").addEventListener("input", () => { T.L = +$("L").value / 10; $("L-v").textContent = T.L.toFixed(1); buildWeights(); T.best = {}; updatePaint(); });
+$("p-random").onclick = () => { const r = rng(Date.now()); for (let i = 0; i < G * G; i++) T.cells[i] = Math.floor(r() * T.k); updatePaint(); };
+$("p-stripes").onclick = () => { const per = Math.max(1, Math.round(G / T.k)); for (let i = 0; i < G * G; i++) T.cells[i] = Math.floor((i % G) / per) % T.k; updatePaint(); };
+$("p-improve").onclick = () => {
+  if (T.running) return; T.running = true; $("p-improve").textContent = "Searching…";
+  const r = rng(Date.now()), n = G * G; let best = tileBad(), bestCells = T.cells.slice(), rounds = 0;
+  function pass() { let changed = false; for (let s = 0; s < n; s++) { const i = Math.floor(r() * n); let bc = T.cells[i], bv = costOf(i, bc); for (let c = 0; c < T.k; c++) { const v = costOf(i, c); if (v < bv - 1e-12) { bv = v; bc = c; } } if (bc !== T.cells[i]) { T.cells[i] = bc; changed = true; } } return changed; }
+  function step() {
+    for (let k = 0; k < 2; k++) if (!pass()) { const b = tileBad(); if (b < best) { best = b; bestCells = T.cells.slice(); } T.cells.set(bestCells); for (let m = 0; m < 6; m++) T.cells[Math.floor(r() * n)] = Math.floor(r() * T.k); rounds++; }
+    updatePaint();
+    if (rounds < 12) requestAnimationFrame(step);
+    else { T.cells.set(bestCells); updatePaint(); T.running = false; $("p-improve").textContent = "Let the computer try";
+      $("p-note").textContent = best < 1e-9 ? "Found a clash-free tile at this size." : T.k <= 5 ? "Stuck at " + fmtPct(best) + ". With 5 or fewer colors that's guaranteed: zero is impossible." : "Stuck at " + fmtPct(best) + ". Square cells are a rough tool; Isbell's hexagons reach zero with 7."; }
+  }
+  requestAnimationFrame(step);
+};
+
+/* ---------------- spindle ---------------- */
+const SP = (() => {
+  const phi = 2 * Math.asin(1 / (2 * S3)), a1 = Math.PI / 2 - phi / 2, a2 = Math.PI / 2 + phi / 2, deg30 = Math.PI / 6;
+  const pol = (r, t) => [r * Math.cos(t), r * Math.sin(t)];
+  const pts = [[0, 0], pol(1, a1 - deg30), pol(1, a1 + deg30), pol(S3, a1), pol(1, a2 - deg30), pol(1, a2 + deg30), pol(S3, a2)];
+  const edges = [[0, 1], [0, 2], [1, 2], [1, 3], [2, 3], [0, 4], [0, 5], [4, 5], [4, 6], [5, 6], [3, 6]];
+  return { pts, edges, col: new Int8Array(7).fill(-1), k: 3 };
+})();
+function spView(w, h) { const sc = Math.min(w / 3.2, h / 2.2), cy = h - 0.25 * sc; return { sc, X: (x) => w / 2 + x * sc, Y: (y) => cy - y * sc }; }
+function drawSpindle() {
+  const cv = $("cvSp"), { ctx, w, h } = fitCanvas(cv), v = spView(w, h);
+  let bad = 0;
+  SP.edges.forEach(([a, b]) => { const clash = SP.col[a] >= 0 && SP.col[a] === SP.col[b]; if (clash) bad++;
+    ctx.strokeStyle = clash ? C.bad : C.mut; ctx.lineWidth = clash ? 3 : 1.25; ctx.beginPath(); ctx.moveTo(v.X(SP.pts[a][0]), v.Y(SP.pts[a][1])); ctx.lineTo(v.X(SP.pts[b][0]), v.Y(SP.pts[b][1])); ctx.stroke(); });
+  SP.pts.forEach((p, i) => { ctx.beginPath(); ctx.arc(v.X(p[0]), v.Y(p[1]), 11, 0, 7); ctx.fillStyle = SP.col[i] >= 0 ? PAL[SP.col[i]] : C.card; ctx.fill(); ctx.strokeStyle = C.fg; ctx.lineWidth = 1.25; ctx.stroke(); });
+  $("sp-bad").textContent = bad; $("sp-bad").className = "mono " + (bad ? "bad" : "");
+  const un = Array.from(SP.col).filter((c) => c < 0).length; $("sp-un").textContent = un;
+  if (!bad && !un) { $("sp-note").textContent = SP.k === 3 ? "That shouldn't happen. Check the links!" : "Done: with 4 colors the spindle works. That's why it only proves you need at least 4."; }
+}
+function renderSpK() { const seg = $("sp-k"); seg.textContent = ""; [3, 4].forEach((k) => { const b = document.createElement("button"); b.textContent = k + " colors"; b.setAttribute("aria-pressed", String(k === SP.k)); b.onclick = () => { SP.k = k; for (let i = 0; i < 7; i++) if (SP.col[i] >= k) SP.col[i] = -1; renderSpK(); drawSpindle(); $("sp-note").textContent = k === 3 ? "Hint: each diamond forces its far tip to match the hinge." : "With a fourth color it's easy. Try it."; }; seg.appendChild(b); }); }
+$("cvSp").addEventListener("pointerdown", (ev) => {
+  const cv = $("cvSp"), r = cv.getBoundingClientRect(), v = spView(r.width, r.height), x = ev.clientX - r.left, y = ev.clientY - r.top;
+  let best = -1, bd = 20; SP.pts.forEach((p, i) => { const d = Math.hypot(v.X(p[0]) - x, v.Y(p[1]) - y); if (d < bd) { bd = d; best = i; } });
+  if (best >= 0) { SP.col[best] = SP.col[best] + 1 >= SP.k ? -1 : SP.col[best] + 1; drawSpindle(); }
+});
+$("sp-clear").onclick = () => { SP.col.fill(-1); drawSpindle(); };
+$("sp-check").onclick = () => {
+  const k = SP.k, total = Math.pow(k, 7); let ok = 0;
+  for (let m = 0; m < total; m++) { const c = []; let t = m; for (let i = 0; i < 7; i++) { c.push(t % k); t = Math.floor(t / k); } if (SP.edges.every(([a, b]) => c[a] !== c[b])) ok++; }
+  $("sp-note").textContent = ok === 0 ? `Checked all ${total.toLocaleString()} ways to color 7 points with ${k} colors. None of them work: every one has a clashing link.` : `Checked all ${total.toLocaleString()} ways with ${k} colors: ${ok.toLocaleString()} work.`;
+};
+
+/* ---------------- history ---------------- */
+const HIST = [
+  ["1950", "Nelson, Isbell", "Asked the question. 4 colors are needed (a small figure forces it); 7 hexagons suffice.", 4, 7],
+  ["1961", "L. and W. Moser", "The 7-point spindle: a tiny certificate that 3 colors aren't enough.", 4, 7],
+  ["1981", "Falconer", "If the color regions are measurable, 5 are needed. Arbitrary colorings stay at 4.", 4, 7],
+  ["2018", "de Grey", "A 1,581-point graph that can't be 4-colored. Polymath and SAT solvers later shrank it to 509 points.", 5, 7],
+  ["2026", "OpenAI model", "No 5-coloring exists, for any coloring at all. Formalized in Lean.", 6, 7],
+];
+function renderHist() {
+  const tb = $("hist"); tb.textContent = "";
+  HIST.forEach(([y, who, what, lo, hi]) => {
+    const tr = document.createElement("tr");
+    [y, who, what].forEach((t, i) => { const td = document.createElement("td"); td.textContent = t; if (i === 0) td.className = "mono"; if (i === 0) td.style.textAlign = "left"; tr.appendChild(td); });
+    const tdR = document.createElement("td"); tdR.className = "mono"; tdR.textContent = lo + " – " + hi; tr.appendChild(tdR);
+    const tdB = document.createElement("td"), bar = document.createElement("div"), i = document.createElement("i");
+    bar.className = "range"; i.style.left = ((lo - 1) / 7) * 100 + "%"; i.style.width = ((hi - lo) / 7) * 100 + "%"; if (hi - lo === 0) i.style.width = "3px";
+    bar.appendChild(i); tdB.appendChild(bar); tr.appendChild(tdB); tb.appendChild(tr);
+  });
+}
+
+/* ---------------- fold label ---------------- */
+const fold = $("proof-fold"); fold.addEventListener("toggle", () => { fold.querySelector(".fold-hint").textContent = fold.open ? "hide" : "show"; });
+
+/* ---------------- boot ---------------- */
+function redrawAll() { readColors(); P.key = ""; renderPaintControls(); drawPlane(); drawTile(); drawWall(); drawSpindle(); }
+renderSchemes(); renderSpK(); renderHist();
+$("size").value = String(Math.round(((scheme.def - scheme.min) / (scheme.max - scheme.min)) * 1000));
+T.L = +$("L").value / 10; $("L-v").textContent = T.L.toFixed(1); buildWeights();
+$("p-stripes").click(); renderPaintControls();
+updateExplore(); drawSpindle();
+let rT = 0; new ResizeObserver(() => { clearTimeout(rT); rT = setTimeout(redrawAll, 50); }).observe(document.body);
+dark.addEventListener("change", redrawAll);
+// This page is a standalone explainer; it completes the host handshake and ignores the trace.
+if (window.traces && typeof window.traces.getTrace === "function") { window.traces.getTrace().catch(() => {}); }
+})();
+</script>
+</body>
+</html>

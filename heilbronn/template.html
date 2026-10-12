@@ -1,0 +1,303 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Heilbronn's triangles</title>
+<style>
+/*BASE_CSS*/
+.sq-grid { display: grid; grid-template-columns: minmax(0, 440px) minmax(0, 1fr); gap: 12px; }
+.line canvas { aspect-ratio: auto; height: 160px; }
+.bars canvas { cursor: crosshair; }
+.legend { display: inline-flex; flex-wrap: wrap; gap: 14px; font-size: 12px; color: var(--muted-foreground); }
+.sw { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 5px; vertical-align: -1px; }
+@media (max-width: 860px) { .sq-grid { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+
+<!-- ============ OVERVIEW ============ -->
+<section id="overview">
+  <p class="lede">Scatter <i>n</i> dots in a square and look at every triangle formed by three of them. The smallest one is your score: you want it as <em>big</em> as possible. How big can it be? For 75 years the guess was "about 1/n², give or take tiny factors." In September 2026, a proof produced by an OpenAI model showed that guess is wrong. You can beat 1/n² by a genuine power of n.</p>
+
+  <div class="why">
+    <div class="card">
+      <h3>The question</h3>
+      <p>Hans Heilbronn asked it around 1950. Put n points in a unit square so that no triangle they form is tiny. Three points in a line make a triangle of area zero, so you need to avoid that, and more. Call the best possible smallest area Δ(n). How fast does Δ(n) shrink as n grows?</p>
+    </div>
+    <div class="card">
+      <h3>Why it matters</h3>
+      <p>It's a test case for a deep question: how evenly can points be spread? The same tension between order and randomness shows up in sampling, numerical integration and the theory of "irregularities of distribution." Klaus Roth, a Fields medalist, worked on it for decades.</p>
+    </div>
+    <div class="card">
+      <h3>Why it was hard</h3>
+      <p>Random points and tidy grids both land near 1/n². In 1982 Komlós, Pintz and Szemerédi squeezed out an extra log n factor, which disproved Heilbronn's original guess of exactly 1/n². But beating 1/n² by a whole power of n seemed out of reach, and experts conjectured it was impossible.</p>
+    </div>
+  </div>
+
+  <details class="fold" id="proof-fold">
+  <summary><span class="chev" aria-hidden="true"></span><span class="fold-title">How the proof works, in four moves</span><span class="fold-hint">show</span></summary>
+  <p class="muted" style="font-size:13px; margin-top:6px">The paper builds a point set, then proves its smallest triangle is at least n<sup>−2+η</sup> for one fixed η &gt; 0. Plain language is on the left, the paper's own terms on the right.</p>
+  <ol class="steps">
+    <li class="step"><span class="n">1</span>
+      <div><h3>Start from a curve with no three dots in a line</h3><p>Erdős's old trick: on a grid of whole numbers, take the dots (x, x²) with "clock arithmetic" wrapping. No three are ever in a line, which already guarantees triangles of about 1/n². The new proof gives each dot a random label from a much bigger arithmetic system of this kind.</p><div class="see">See it: "Two classic recipes", below.</div></div>
+      <div class="term">Finite-field parabola (1, ξ, ξ²)ᵀ, ξ ∈ 𝔽<sub>r<sup>d</sup></sub>, d = 41<br>Distinct labels ⇒ nonzero determinant</div></li>
+    <li class="step"><span class="n">2</span>
+      <div><h3>Write the arithmetic into the digits</h3><p>Each dot's coordinates are whole numbers, written in a huge base. The proof hides the "no three in a line" guarantee in one particular digit of the triangle's area. If two dots have different labels, that digit can't be zero, so their triangle can't be tiny.</p></div>
+      <div class="term">Field norm as an alternating polynomial<br>Encoded in one coefficient of a base-B determinant (carry control à la Salem–Spencer, Behrend)</div></li>
+    <li class="step"><span class="n">3</span>
+      <div><h3>Scramble without changing areas, and block flat triangles</h3><p>The dots are mixed by a random transformation that keeps all triangle areas the same, so the guarantee survives while the dots spread out evenly. A second, independent clock-arithmetic condition (points on a curved surface) rules out the remaining danger: three dots exactly in a line.</p></div>
+      <div class="term">Random SL₃ orbits mod h · anisotropic lattice counts<br>Affine quadric mod q, Chinese remainder theorem, projective point (u₁/u₃, u₂/u₃)</div></li>
+    <li class="step"><span class="n">4</span>
+      <div><h3>Delete the few bad ones</h3><p>A tiny triangle can now only appear when labels repeat, and that's rare. So throw in twice as many dots as you need and delete one dot from every bad triangle. Enough survive, and their smallest triangle beats 1/n² by a factor of n<sup>η</sup>.</p><div class="see">Try it: "Random, then delete", below.</div></div>
+      <div class="term">Alteration (deletion) argument<br>Δ(n) ≥ c·n<sup>−2+η</sup>, η = 2/(45435k + 16)</div></li>
+  </ol>
+  <div class="aside">
+    <div><h3>How big is the improvement?</h3><p>Astonishingly small. The paper's explicit η uses k = T² + 1, where T is itself a 116-digit number. That puts η around 10<sup>−235</sup>. The size doesn't matter for the theorem: any fixed power beats every log factor once n is large enough. The authors made no attempt to optimize it.</p></div>
+    <div><h3>Earlier attempts</h3><p>Two earlier preprints claimed bigger improvements. The paper explains where each one breaks: one rests on an unproved assumption, and the other accidentally includes three points in a line.</p></div>
+    <div><h3>How sure is this?</h3><p>The repository reports a Lean formalization of the construction for an infinite sequence of sizes n. That's enough to refute the "almost 1/n²" conjecture. Lean is a proof checker that verifies each step mechanically. The repo also cautions that results may still contain issues while review continues.</p></div>
+  </div>
+  </details>
+</section>
+
+<!-- ============ 1. PLAY ============ -->
+<section id="play">
+  <h2>Try it: make the smallest triangle big</h2>
+  <p>Drag the dots. The <em>smallest</em> triangle they form is filled in, and its area is your score. Nudge any corner of it and a different triangle usually becomes the smallest. Everything is a tug of war.</p>
+  <p class="muted">Bigger n means smaller triangles, so the fair comparison is the area × n². Every classic recipe lands around 0.2 to 1 on that scale. The 2026 result says the best possible score grows without limit as n grows, though astronomically slowly.</p>
+
+  <div class="toolbar">
+    <label class="slider">Dots <input id="n" type="range" min="5" max="16" value="8" aria-label="Number of dots"> <span class="mono" id="n-v"></span></label>
+    <div class="seg" role="group" aria-label="Start from" id="presets"></div>
+    <span class="spacer"></span>
+    <button class="btn" id="improve">Let the computer try</button>
+  </div>
+
+  <div class="grid3">
+    <div class="card panel">
+      <div class="cap"><span class="label">Unit square</span><span class="label faint">drag the dots</span></div>
+      <canvas id="cvSq" class="square"></canvas>
+    </div>
+    <div class="card panel bars">
+      <div class="cap"><span class="label">Every triangle, smallest first</span><span class="label faint mono" id="tri-n"></span></div>
+      <canvas id="cvBars" class="square"></canvas>
+    </div>
+    <div class="card readout">
+      <div><div class="label">Smallest triangle</div><div class="big" id="r-min">–</div></div>
+      <div class="kv"><span class="label">Score: area × n²</span><span class="mono" id="r-score">–</span></div>
+      <div class="kv"><span class="label">Your best for this n</span><span class="mono" id="r-best">–</span></div>
+      <div class="kv"><span class="label">Best known for this n</span><span class="mono" id="r-known">–</span></div>
+      <div class="rule"></div>
+      <div class="note" id="r-note"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 2. RECIPES ============ -->
+<section id="recipes">
+  <h2>Two classic recipes</h2>
+  <p>The new proof combines two old ideas: an arithmetic curve where no three dots line up, and "throw in random dots, then delete the bad ones."</p>
+
+  <div class="toolbar">
+    <div class="seg" role="group" aria-label="Recipe" id="recipe-seg"></div>
+    <span class="spacer"></span>
+    <label class="slider" id="p-wrap">Prime p <input id="p" type="range" min="0" max="9" value="3" aria-label="Prime"> <span class="mono" id="p-v"></span></label>
+    <button class="btn" id="redraw" hidden>New random dots</button>
+  </div>
+
+  <div class="sq-grid">
+    <div class="card panel">
+      <div class="cap"><span class="label" id="rec-cap"></span><span class="label faint" id="rec-hint"></span></div>
+      <canvas id="cvRec" class="square"></canvas>
+    </div>
+    <div class="card readout">
+      <div class="kv"><span class="label">Dots</span><span class="mono" id="rc-n">–</span></div>
+      <div class="kv"><span class="label">Smallest triangle</span><span class="mono" id="rc-min">–</span></div>
+      <div class="kv"><span class="label">Score: area × n²</span><span class="mono" id="rc-score">–</span></div>
+      <div class="rule"></div>
+      <p class="note" id="rc-note" style="max-width:none"></p>
+      <div class="toolbar" id="del-ctl" style="margin:0" hidden>
+        <button class="btn" id="del-step">Delete one bad dot</button>
+        <button class="btn" id="del-all">Delete all bad dots</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 3. RACE ============ -->
+<section id="race">
+  <h2>The race of exponents</h2>
+  <p>Write the best smallest area as roughly 1/n<sup>x</sup>. Mathematicians attack x from both sides. <em>Constructions</em> push x down by building good dot sets. <em>Impossibility proofs</em> push x up by showing every dot set has a small triangle. The old conjecture said x is essentially 2. The 2026 result moves the construction mark below 2. The gap is far too thin to see, but it's there.</p>
+  <div class="legend"><span><i class="sw" style="background:var(--primary)"></i>constructions (x can be at most this)</span><span><i class="sw" style="background:var(--muted-foreground)"></i>impossibility proofs (x is at least this)</span></div>
+  <div class="card panel line" style="margin-top:10px"><canvas id="cvLine"></canvas></div>
+  <table aria-label="Bounds on Heilbronn's triangle problem">
+    <thead><tr><th>Year</th><th>Who</th><th>Kind</th><th>Result</th></tr></thead>
+    <tbody id="race-t"></tbody>
+  </table>
+</section>
+
+<section>
+  <p class="sources">Source: <code>openai/math</code>, family 191, "A power improvement in the Heilbronn triangle lower bound" (Sept 25, 2026). The repository reports a Lean formalization for an unbounded sequence of sizes (<code>lean/docs/191.md</code>). Best-known values for small n are from published searches (Comellas and Yebra, and others), shown up to 9 dots. The demos illustrate the problem and the classic recipes, not the paper's construction itself.</p>
+</section>
+
+<script>
+(function () {
+"use strict";
+/*BASE_JS*/
+
+const area = (a, b, c) => Math.abs((b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0])) / 2;
+function allTris(P) { const out = []; for (let i = 0; i < P.length; i++) for (let j = i + 1; j < P.length; j++) for (let k = j + 1; k < P.length; k++) out.push([area(P[i], P[j], P[k]), i, j, k]); return out; }
+function minTri(P) { let best = [Infinity, 0, 1, 2]; for (let i = 0; i < P.length; i++) for (let j = i + 1; j < P.length; j++) for (let k = j + 1; k < P.length; k++) { const a = area(P[i], P[j], P[k]); if (a < best[0]) best = [a, i, j, k]; } return best; }
+const fmtA = (a) => (a === 0 ? "0" : a < 1e-4 ? a.toExponential(2) : a.toFixed(5));
+const KNOWN = { 5: Math.sqrt(3) / 9, 6: 1 / 8, 7: 0.083859, 8: (Math.sqrt(13) - 1) / 36, 9: (9 * Math.sqrt(65) - 55) / 320 };
+
+/* ---------------- play ---------------- */
+const S = { n: 8, P: [], drag: -1, hoverTri: -1, best: {}, running: false, preset: "random" };
+function presetPoints(kind, n) {
+  const r = rng(kind === "random" ? Date.now() : 3), P = [];
+  if (kind === "random") for (let i = 0; i < n; i++) P.push([0.05 + 0.9 * r(), 0.05 + 0.9 * r()]);
+  if (kind === "grid") { const m = Math.ceil(Math.sqrt(n)); for (let i = 0; i < n; i++) P.push([0.1 + 0.8 * ((i % m) / Math.max(1, m - 1)), 0.1 + 0.8 * (Math.floor(i / m) / Math.max(1, m - 1))]); }
+  if (kind === "circle") for (let i = 0; i < n; i++) { const t = (2 * Math.PI * i) / n + 0.3; P.push([0.5 + 0.45 * Math.cos(t), 0.5 + 0.45 * Math.sin(t)]); }
+  if (kind === "parabola") { let p = n; while (!isPrime(p)) p++; for (let x = 0; x < n; x++) P.push([x / (p - 1), ((x * x) % p) / (p - 1)]); }
+  return P;
+}
+function isPrime(p) { if (p < 2) return false; for (let d = 2; d * d <= p; d++) if (p % d === 0) return false; return true; }
+function sqView(w) { const pad = 14, s = w - 2 * pad; return { X: (x) => pad + x * s, Y: (y) => pad + (1 - y) * s, ix: (px) => (px - pad) / s, iy: (py) => 1 - (py - pad) / s }; }
+function drawSquare(cv, P, tri, opts) {
+  const { ctx, w } = fitCanvas(cv), v = sqView(w);
+  ctx.strokeStyle = C.border; ctx.lineWidth = 1; ctx.strokeRect(v.X(0), v.Y(1), v.X(1) - v.X(0), v.Y(0) - v.Y(1));
+  if (opts && opts.grid) { ctx.strokeStyle = mix(C.mut, 0.18); for (let g = 0; g <= opts.grid; g++) { const t = g / opts.grid; ctx.beginPath(); ctx.moveTo(v.X(t), v.Y(0)); ctx.lineTo(v.X(t), v.Y(1)); ctx.moveTo(v.X(0), v.Y(t)); ctx.lineTo(v.X(1), v.Y(t)); ctx.stroke(); } }
+  if (opts && opts.bad) { ctx.strokeStyle = mix(C.bad, 0.55); ctx.lineWidth = 1; opts.bad.forEach(([, i, j, k]) => { ctx.beginPath(); ctx.moveTo(v.X(P[i][0]), v.Y(P[i][1])); ctx.lineTo(v.X(P[j][0]), v.Y(P[j][1])); ctx.lineTo(v.X(P[k][0]), v.Y(P[k][1])); ctx.closePath(); ctx.stroke(); }); }
+  if (tri && P.length >= 3) {
+    const [a, i, j, k] = tri; ctx.beginPath(); ctx.moveTo(v.X(P[i][0]), v.Y(P[i][1])); ctx.lineTo(v.X(P[j][0]), v.Y(P[j][1])); ctx.lineTo(v.X(P[k][0]), v.Y(P[k][1])); ctx.closePath();
+    ctx.fillStyle = mix(a < 1e-9 ? C.bad : C.primary, 0.28); ctx.fill(); ctx.strokeStyle = a < 1e-9 ? C.bad : C.primary; ctx.lineWidth = 1.5; ctx.stroke();
+  }
+  P.forEach((p, i) => { ctx.beginPath(); ctx.arc(v.X(p[0]), v.Y(p[1]), 5.5, 0, 7); ctx.fillStyle = tri && (i === tri[1] || i === tri[2] || i === tri[3]) ? C.primary : C.fg; ctx.fill(); });
+}
+function drawBars(tris, minA) {
+  const { ctx, w, h } = fitCanvas($("cvBars")); const sorted = tris.slice().sort((a, b) => a[0] - b[0]); S.sorted = sorted;
+  const maxA = Math.max(1e-9, sorted[sorted.length - 1][0]), n = sorted.length, bw = w / n, padB = 18;
+  sorted.forEach((t, i) => { const bh = Math.max(1, (t[0] / maxA) * (h - padB - 8)); ctx.fillStyle = i === S.hoverTri ? C.fg : i === 0 ? C.primary : mix(C.mut, 0.45); ctx.fillRect(i * bw + (bw > 3 ? 0.5 : 0), h - padB - bh, Math.max(1, bw - (bw > 3 ? 1 : 0)), bh); });
+  ctx.fillStyle = C.faint; ctx.font = "11px " + C.mono; ctx.fillText("smallest", 0, h - 4); const t = "largest"; ctx.fillText(t, w - ctx.measureText(t).width, h - 4);
+  $("tri-n").textContent = n + " triangles";
+}
+function updatePlay() {
+  const P = S.P, tris = allTris(P), mt = minTri(P), n = P.length, score = mt[0] * n * n;
+  const shown = S.hoverTri >= 0 && S.sorted && S.sorted[S.hoverTri] ? S.sorted[S.hoverTri] : mt;
+  drawSquare($("cvSq"), P, shown); drawBars(tris, mt[0]);
+  $("r-min").textContent = fmtA(mt[0]); $("r-min").className = "big" + (mt[0] < 1e-9 ? " bad" : "");
+  $("r-score").textContent = score.toFixed(3);
+  if (!S.best[n] || mt[0] > S.best[n]) S.best[n] = mt[0];
+  $("r-best").textContent = fmtA(S.best[n]);
+  $("r-known").textContent = KNOWN[n] ? fmtA(KNOWN[n]) : "unknown";
+  const note = $("r-note"); note.textContent = "";
+  const b = document.createElement("b");
+  if (mt[0] < 1e-9) { b.textContent = "Three dots in a line. "; note.append(b, "That triangle has zero area, the worst possible score. Grids are full of these."); }
+  else if (KNOWN[n] && mt[0] > KNOWN[n] * 0.985) { b.textContent = "Within 1.5% of the best known! "; note.append(b, "Small cases like this are solved by computer search."); }
+  else if (S.hoverTri >= 0) { note.textContent = "Highlighting triangle #" + (S.hoverTri + 1) + " of " + tris.length + ", area " + fmtA(shown[0]) + "."; }
+  else { note.textContent = "Hover the bars to see any triangle. The tallest bars barely matter: only the shortest one counts."; }
+}
+function setPreset(kind) { S.preset = kind; S.P = presetPoints(kind, S.n); S.hoverTri = -1; segButtons($("presets"), [["random", "Random"], ["grid", "Grid"], ["circle", "Circle"], ["parabola", "Parabola"]], kind, setPreset); updatePlay(); }
+$("n").addEventListener("input", () => { S.n = +$("n").value; $("n-v").textContent = S.n; setPreset(S.preset); });
+const cvSq = $("cvSq");
+function sqPt(ev) { const r = cvSq.getBoundingClientRect(), v = sqView(r.width); return [v.ix(ev.clientX - r.left), v.iy(ev.clientY - r.top), r.width]; }
+cvSq.addEventListener("pointerdown", (ev) => { const [x, y, w] = sqPt(ev), v = sqView(w); let bi = -1, bd = 16; S.P.forEach((p, i) => { const d = Math.hypot(v.X(p[0]) - v.X(x), v.Y(p[1]) - v.Y(y)); if (d < bd) { bd = d; bi = i; } }); if (bi >= 0) { S.drag = bi; cvSq.setPointerCapture(ev.pointerId); } });
+cvSq.addEventListener("pointermove", (ev) => { if (S.drag < 0) return; const [x, y] = sqPt(ev); S.P[S.drag] = [Math.min(1, Math.max(0, x)), Math.min(1, Math.max(0, y))]; S.hoverTri = -1; updatePlay(); });
+cvSq.addEventListener("pointerup", () => { S.drag = -1; });
+$("cvBars").addEventListener("pointermove", (ev) => { const r = $("cvBars").getBoundingClientRect(), n = S.sorted ? S.sorted.length : 0; const i = Math.floor(((ev.clientX - r.left) / r.width) * n); if (i !== S.hoverTri && i >= 0 && i < n) { S.hoverTri = i; updatePlay(); } });
+$("cvBars").addEventListener("pointerleave", () => { S.hoverTri = -1; updatePlay(); });
+$("improve").onclick = () => {
+  if (S.running) return; S.running = true; $("improve").textContent = "Searching…";
+  const r = rng(Date.now()); let cur = S.P.map((p) => p.slice()), curA = minTri(cur)[0], step = 0.08, it = 0;
+  function frame() {
+    for (let k = 0; k < 250; k++, it++) {
+      const mt = minTri(cur), pick = [mt[1], mt[2], mt[3]][Math.floor(r() * 3)], cand = cur.map((p) => p.slice());
+      cand[pick] = [Math.min(1, Math.max(0, cand[pick][0] + (r() - 0.5) * step)), Math.min(1, Math.max(0, cand[pick][1] + (r() - 0.5) * step))];
+      const a = minTri(cand)[0]; if (a >= curA) { cur = cand; curA = a; }
+      if (it % 400 === 399) step *= 0.8;
+    }
+    S.P = cur; updatePlay();
+    if (it < 6000) requestAnimationFrame(frame); else { S.running = false; $("improve").textContent = "Let the computer try"; }
+  }
+  requestAnimationFrame(frame);
+};
+
+/* ---------------- recipes ---------------- */
+const PRIMES = [5, 7, 11, 13, 17, 19, 23, 29, 31, 37];
+const R = { kind: "parabola", P: [], removed: [], bad: [], thresh: 0 };
+function recipeParabola() {
+  const p = PRIMES[+$("p").value]; $("p-v").textContent = p;
+  R.P = []; for (let x = 0; x < p; x++) R.P.push([x / (p - 1), ((x * x) % p) / (p - 1)]);
+  const mt = minTri(R.P), n = R.P.length;
+  $("rec-cap").textContent = "Dots at (x, x² mod " + p + ")"; $("rec-hint").textContent = "grid of " + p + " × " + p;
+  drawSquare($("cvRec"), R.P, mt, { grid: p - 1 });
+  $("rc-n").textContent = n; $("rc-min").textContent = fmtA(mt[0]); $("rc-score").textContent = (mt[0] * n * n).toFixed(3);
+  $("rc-note").textContent = "Every corner sits on the grid, so a triangle's area is a multiple of half a grid square. It's zero only if the three dots are in a line, and on this wrapped parabola that never happens (a line meets a parabola at most twice, even in clock arithmetic). So every triangle has area at least 1/(2(p−1)²): a score of about ½, guaranteed. The 2026 proof starts from this curve, over a far larger number system.";
+}
+function recipeRandom(fresh) {
+  if (fresh || !R.base) { const r = rng(Date.now()), m = 24; R.base = []; for (let i = 0; i < m; i++) R.base.push([0.03 + 0.94 * r(), 0.03 + 0.94 * r()]); R.removed = []; }
+  const keep = R.base.filter((_, i) => !R.removed.includes(i));
+  const target = 12, thresh = 0.25 / (target * target); R.thresh = thresh;
+  R.bad = allTris(keep).filter((t) => t[0] < thresh); R.P = keep;
+  const mt = minTri(keep), n = keep.length;
+  $("rec-cap").textContent = "Random dots"; $("rec-hint").textContent = R.bad.length ? R.bad.length + " small triangles in red" : "no small triangles left";
+  drawSquare($("cvRec"), keep, mt, { bad: R.bad });
+  $("rc-n").textContent = n + (R.removed.length ? " (deleted " + R.removed.length + ")" : ""); $("rc-min").textContent = fmtA(mt[0]); $("rc-score").textContent = (mt[0] * n * n).toFixed(3);
+  $("rc-note").textContent = R.bad.length ? "Throw in twice as many dots as you need. A few triangles come out smaller than ¼ ÷ 12² (outlined in red). Delete a dot from each one; the dot in the most bad triangles goes first." : "Every small triangle is gone, and most dots survived. This alteration step is the last move of the 2026 proof. Its new idea is to sample dots from an arithmetic recipe in which small triangles are far rarer than for random dots, so far fewer deletions are needed.";
+  $("del-step").disabled = $("del-all").disabled = !R.bad.length;
+}
+function deleteOne() {
+  if (!R.bad.length) return; const keepIdx = R.base.map((_, i) => i).filter((i) => !R.removed.includes(i)), cnt = new Map();
+  R.bad.forEach(([, i, j, k]) => [i, j, k].forEach((t) => cnt.set(t, (cnt.get(t) || 0) + 1)));
+  let bi = -1, bc = -1; cnt.forEach((c, i) => { if (c > bc) { bc = c; bi = i; } }); R.removed.push(keepIdx[bi]); recipeRandom(false);
+}
+$("del-step").onclick = deleteOne;
+$("del-all").onclick = () => { let g = 0; (function tick() { if (R.bad.length && g++ < 40) { deleteOne(); setTimeout(tick, 220); } })(); };
+function setRecipe(kind) {
+  R.kind = kind; segButtons($("recipe-seg"), [["parabola", "Erdős's parabola"], ["random", "Random, then delete"]], kind, setRecipe);
+  $("p-wrap").hidden = kind !== "parabola"; $("redraw").hidden = $("del-ctl").hidden = kind !== "random";
+  kind === "parabola" ? recipeParabola() : recipeRandom(true);
+}
+$("p").addEventListener("input", recipeParabola);
+$("redraw").onclick = () => recipeRandom(true);
+
+/* ---------------- race ---------------- */
+const RACE = [
+  [1950, "Heilbronn", "question", "Asks how big the smallest triangle can be.", null],
+  [1951, "Erdős", "construction", "Parabola trick: Δ(n) ≥ c/n², so x ≤ 2.", 2],
+  [1951, "Roth", "impossibility", "First proof that the smallest triangle must shrink faster than 1/n.", null],
+  [1981, "Komlós, Pintz, Szemerédi", "impossibility", "Δ(n) ≤ n^(−8/7 + ε), so x ≥ 8/7.", 8 / 7],
+  [1982, "Komlós, Pintz, Szemerédi", "construction", "Random dots plus a clever deletion: Δ(n) ≥ c·log n / n². Heilbronn's exact 1/n² guess is false.", 2],
+  [2023, "Cohen, Pohoata, Zakharov", "impossibility", "x ≥ 8/7 + 1/2000.", 8 / 7 + 1 / 2000],
+  [2025, "Cohen, Pohoata, Zakharov", "impossibility", "Δ(n) ≤ n^(−7/6 + ε), so x ≥ 7/6.", 7 / 6],
+  [2026, "OpenAI model", "construction", "Δ(n) ≥ c·n^(−2+η): x ≤ 2 − η. The \"almost 1/n²\" conjecture is false.", 2],
+];
+function drawLine() {
+  const { ctx, w, h } = fitCanvas($("cvLine")), lo = 0.9, hi = 2.1, pad = 24, X = (x) => pad + ((x - lo) / (hi - lo)) * (w - 2 * pad), yAx = 70;
+  ctx.font = "11px " + C.mono; ctx.textAlign = "center";
+  ctx.fillStyle = mix(C.mut, 0.12); ctx.fillRect(X(7 / 6), yAx - 12, X(2) - X(7 / 6), 24);
+  ctx.fillStyle = C.mut; ctx.fillText("still unknown: the true x is somewhere in here", (X(7 / 6) + X(2)) / 2, yAx - 22);
+  ctx.strokeStyle = C.border; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(pad, yAx); ctx.lineTo(w - pad, yAx); ctx.stroke();
+  [1, 1.25, 1.5, 1.75, 2].forEach((t) => { ctx.strokeStyle = C.border; ctx.beginPath(); ctx.moveTo(X(t), h - 30); ctx.lineTo(X(t), h - 24); ctx.stroke(); ctx.fillStyle = C.faint; ctx.fillText(String(t), X(t), h - 10); });
+  ctx.strokeStyle = C.border; ctx.beginPath(); ctx.moveTo(pad, h - 27); ctx.lineTo(w - pad, h - 27); ctx.stroke();
+  const marks = [[1, "1: trivial", 0, 0], [8 / 7, "8/7 (1981)", 0, 1], [7 / 6, "7/6 (2025)", 0, 1], [2, "2 − η (2026)", 1, 1]];
+  marks.forEach(([x, label, up, row]) => {
+    const col = up ? C.primary : C.mut; ctx.strokeStyle = col; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(X(x), yAx - 12); ctx.lineTo(X(x), yAx + 12 + row * 14); ctx.stroke();
+    ctx.fillStyle = col; const right = x === 2 || x === 8 / 7; ctx.textAlign = right ? "right" : "left"; ctx.fillText(label, X(x) + (right ? -6 : 6), yAx + 22 + row * 14);
+  });
+  ctx.textAlign = "start";
+}
+function renderRace() {
+  const tb = $("race-t"); tb.textContent = "";
+  RACE.forEach(([y, who, kind, what]) => { const tr = document.createElement("tr"); [String(y), who, kind, what].forEach((t, i) => { const td = document.createElement("td"); td.textContent = t; if (i === 0) td.className = "mono"; if (i === 2) td.className = "label"; tr.appendChild(td); }); tb.appendChild(tr); });
+}
+
+/* ---------------- boot ---------------- */
+wireFold("proof-fold");
+$("n-v").textContent = S.n; setPreset("random"); setRecipe("parabola"); renderRace(); drawLine();
+onResize(() => { updatePlay(); R.kind === "parabola" ? recipeParabola() : recipeRandom(false); drawLine(); });
+handshake();
+})();
+</script>
+</body>
+</html>

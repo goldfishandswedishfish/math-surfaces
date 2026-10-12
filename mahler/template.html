@@ -1,0 +1,714 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mahler's conjecture</title>
+<style>
+:root {
+  color-scheme: light dark;
+  --background: #f5f5f5;
+  --foreground: #141414;
+  --card: #ffffff;
+  --muted: #f2f2f2;
+  --muted-foreground: #6b6b6b;
+  --faint-foreground: #808080;
+  --border: #e3e3e3;
+  --border-strong: #dbdbdb;
+  --hairline: rgb(0 0 0 / 0.07);
+  --accent: rgb(0 0 0 / 0.03);
+  --primary: oklch(0.50 0.15 278);
+  --destructive: #cf4415;
+  --success: #4b7c0b;
+  --radius: 0.625rem;
+  --mono: ui-monospace, "Berkeley Mono", SFMono-Regular, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #141414;
+    --foreground: #e2e2e2;
+    --card: #262626;
+    --muted: #111111;
+    --muted-foreground: #a0a0a0;
+    --faint-foreground: #737373;
+    --border: #202020;
+    --border-strong: #242424;
+    --hairline: rgb(226 226 226 / 0.06);
+    --accent: rgb(255 255 255 / 0.03);
+    --primary: oklch(0.68 0.14 278);
+  }
+}
+[hidden] { display: none !important; }
+* { box-sizing: border-box; }
+html, body { margin: 0; background: transparent; }
+body {
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  font-size: 14px; line-height: 1.55; color: var(--foreground);
+  -webkit-font-smoothing: antialiased;
+}
+h2 { font-size: 18px; font-weight: 400; letter-spacing: -0.015em; margin: 0 0 6px; }
+p { margin: 0 0 10px; max-width: 72ch; }
+.muted { color: var(--muted-foreground); }
+.faint { color: var(--faint-foreground); }
+.mono { font-family: var(--mono); font-size: 13px; }
+.label { font-size: 12px; color: var(--muted-foreground); }
+em { font-style: normal; color: var(--primary); }
+section { padding: 28px 0; border-top: 1px solid var(--hairline); }
+section:first-of-type { border-top: 0; padding-top: 4px; }
+.card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); }
+
+/* controls */
+.toolbar { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 14px 0 12px; }
+.seg { display: inline-flex; border: 1px solid var(--border-strong); border-radius: 5px; overflow: hidden; }
+.seg button + button { border-left: 1px solid var(--border-strong); }
+button {
+  font: inherit; font-size: 13px; color: var(--foreground); background: var(--card);
+  border: 0; padding: 4px 10px; cursor: pointer;
+}
+button:hover { background: var(--accent); }
+button[aria-pressed="true"] { background: var(--muted); color: var(--primary); }
+.btn { border: 1px solid var(--border-strong); border-radius: 5px; }
+button:focus-visible, input:focus-visible { outline: 2px solid var(--primary); outline-offset: 1px; }
+.spacer { flex: 1; }
+.slider { display: inline-flex; gap: 8px; align-items: center; font-size: 13px; color: var(--muted-foreground); }
+input[type=range] { accent-color: var(--primary); width: 120px; }
+
+/* overview */
+.lede { font-size: 16px; letter-spacing: -0.01em; max-width: 68ch; margin-bottom: 18px; }
+.why { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.why .card { padding: 14px; }
+.why h3, .step h3 { font-size: 13px; font-weight: 500; margin: 0 0 4px; }
+.why p { font-size: 13px; color: var(--muted-foreground); margin: 0; }
+.steps { list-style: none; margin: 14px 0 0; padding: 0; border-top: 1px solid var(--hairline); }
+.step { display: grid; grid-template-columns: 28px minmax(0, 1.5fr) minmax(0, 1fr); gap: 4px 16px; padding: 12px 0; border-bottom: 1px solid var(--hairline); }
+.step .n { font-family: var(--mono); font-size: 13px; color: var(--primary); padding-top: 1px; }
+.step p { font-size: 13px; margin: 0; }
+.step .term { font-family: var(--mono); font-size: 12px; color: var(--muted-foreground); line-height: 1.5; }
+.step .see { font-size: 12px; color: var(--primary); margin-top: 4px; }
+.aside { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin-top: 18px; }
+.aside p { font-size: 13px; color: var(--muted-foreground); margin: 0; }
+.aside h3 { font-size: 12px; font-weight: 400; color: var(--foreground); margin: 0 0 4px; }
+
+/* fold */
+details.fold { margin: 22px 0 0; font-size: 14px; color: var(--foreground); border-top: 1px solid var(--hairline); border-bottom: 1px solid var(--hairline); }
+details.fold > summary { list-style: none; display: flex; align-items: center; gap: 10px; padding: 12px 0; cursor: pointer; user-select: none; }
+details.fold > summary::-webkit-details-marker { display: none; }
+details.fold > summary:hover { background: var(--accent); }
+.fold-title { font-size: 18px; letter-spacing: -0.015em; }
+.fold-hint { margin-left: auto; font-size: 12px; color: var(--muted-foreground); }
+details.fold[open] .fold-hint::after { content: ""; }
+.chev { width: 7px; height: 7px; border-right: 1.5px solid var(--muted-foreground); border-bottom: 1.5px solid var(--muted-foreground); transform: rotate(-45deg); margin: 0 2px; flex: none; }
+details.fold[open] .chev { transform: rotate(45deg); }
+details.fold[open] { padding-bottom: 18px; }
+details.fold .steps { margin-top: 10px; }
+@media (prefers-reduced-motion: no-preference) { .chev { transition: transform 120ms; } }
+
+/* playground */
+.pg { display: grid; grid-template-columns: 1fr 1fr 260px; gap: 12px; }
+.panel { position: relative; padding: 10px; }
+.panel .cap { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px; }
+canvas { display: block; width: 100%; touch-action: none; }
+.stage { aspect-ratio: 1 / 1; }
+.readout { padding: 12px; display: flex; flex-direction: column; gap: 10px; }
+.kv { display: flex; justify-content: space-between; align-items: baseline; }
+.kv .mono { text-align: right; }
+.big { font-family: var(--mono); font-size: 26px; letter-spacing: -0.02em; }
+.rule { height: 1px; background: var(--hairline); }
+.gauge { position: relative; height: 34px; margin-top: 4px; }
+.gauge .track { position: absolute; left: 0; right: 0; top: 14px; height: 4px; background: var(--muted); border-radius: 2px; }
+.gauge .forbid { position: absolute; left: 0; top: 14px; height: 4px; border-radius: 2px;
+  background: var(--border-strong); opacity: .6; }
+.gauge .tick { position: absolute; top: 9px; width: 1px; height: 14px; background: var(--muted-foreground); }
+.gauge .tick span { position: absolute; top: 15px; transform: translateX(-50%); font-size: 11px; white-space: nowrap; color: var(--muted-foreground); font-family: var(--mono); }
+.gauge .dot { position: absolute; top: 10px; width: 12px; height: 12px; margin-left: -6px; border-radius: 50%; background: var(--primary); }
+.note { font-size: 13px; color: var(--muted-foreground); min-height: 3em; }
+.note b { font-weight: 500; color: var(--foreground); }
+
+/* turntables */
+.tt-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 14px; }
+.tt { padding: 10px; }
+.tt .view { position: relative; aspect-ratio: 1/1; cursor: grab; user-select: none; -webkit-user-select: none; touch-action: pan-y; }
+.tt .view:active { cursor: grabbing; }
+.tt img { width: 100%; height: 100%; object-fit: contain; display: block; pointer-events: none; }
+.tt .hint { position: absolute; bottom: 4px; left: 0; right: 0; text-align: center; font-size: 12px; color: var(--faint-foreground); }
+.legend { display: inline-flex; gap: 12px; font-size: 12px; color: var(--muted-foreground); }
+.sw { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 5px; vertical-align: -1px; border: 1px solid var(--border-strong); }
+
+table { border-collapse: collapse; width: 100%; font-size: 13px; margin-top: 14px; }
+th { font-weight: 400; color: var(--muted-foreground); font-size: 12px; text-align: right; padding: 6px 10px; border-bottom: 1px solid var(--border); }
+th:first-child, td:first-child { text-align: left; }
+td { text-align: right; padding: 5px 10px; border-bottom: 1px solid var(--hairline); font-family: var(--mono); }
+tr:hover td { background: var(--accent); }
+td.barcell { width: 34%; }
+.bar { position: relative; height: 8px; background: var(--muted); border-radius: 2px; }
+.bar i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 2px; }
+
+/* lens */
+.lens { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+.arrow { font-family: var(--mono); color: var(--faint-foreground); }
+details { margin-top: 12px; font-size: 13px; color: var(--muted-foreground); }
+summary { cursor: pointer; color: var(--foreground); }
+.sources { font-size: 12px; color: var(--faint-foreground); }
+.sources code { font-family: var(--mono); font-size: 12px; }
+
+@media (max-width: 860px) {
+  .why, .aside { grid-template-columns: 1fr; }
+  .step { grid-template-columns: 28px minmax(0, 1fr); }
+  .step .term { grid-column: 2; }
+  .pg { grid-template-columns: 1fr 1fr; }
+  .readout { grid-column: 1 / -1; }
+  .lens { grid-template-columns: 1fr 1fr; }
+  .lens .hist { grid-column: 1 / -1; }
+}
+@media (max-width: 520px) {
+  .pg, .tt-grid, .lens { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+
+<!-- ============ 0. OVERVIEW ============ -->
+<section id="overview">
+  <p class="lede">Mahler's conjecture asks a simple-sounding question: which shapes are the <em>least round</em>? It had been open since 1939. In September 2026, an OpenAI model produced proofs that settle it in every dimension. The answer is the cube and its relatives, and the papers also pin down exactly which shapes tie for last.</p>
+
+  <div class="why">
+    <div class="card">
+      <h3>The question</h3>
+      <p>Every convex shape has a twin, its <i>polar</i>. A big shape has a small twin, so multiplying their volumes gives a fair score for the shape's form, not its size. The ball scores highest. Mahler guessed the cube scores lowest: 4ⁿ/n! in n dimensions.</p>
+    </div>
+    <div class="card">
+      <h3>Why it matters</h3>
+      <p>This score is one of the basic measurements of a shape. It shows up in counting lattice points (Mahler's original motivation), in the geometry of normed spaces, and in symplectic geometry. Bourgain and Milman (1987) proved the true minimum is within an exponential factor of the guess. Nobody could pin down the exact value.</p>
+    </div>
+    <div class="card">
+      <h3>Why it was hard</h3>
+      <p>Most "find the best shape" proofs smooth a shape step by step toward a single winner. Here there is no single winner: the cube, the octahedron and, from 4D on, many mixtures of the two all tie. Before these papers, only dimensions 2 and 3 and special families of shapes were settled.</p>
+    </div>
+  </div>
+
+  <details class="fold" id="proof-fold">
+  <summary><span class="chev" aria-hidden="true"></span><span class="fold-title">How the proof works, in five moves</span><span class="fold-hint">show</span></summary>
+  <p class="muted" style="font-size:13px; margin-top:6px">Plain-language version on the left. The paper's own terms are on the right for anyone who wants to look them up.</p>
+  <ol class="steps">
+    <li class="step"><span class="n">1</span>
+      <div><h3>Build the shape out of slabs</h3><p>A slab is the region between two parallel walls. Any symmetric shape can be approximated as closely as you like by stacking slabs. Its twin is then the shape whose corners point in the slabs' directions, so each wall of the shape becomes a corner of the twin.</p><div class="see">Try it: hover an edge in the playground below.</div></div>
+      <div class="term">Approximation by slab polytopes<br>A = {x : |bᵢ·x| ≤ 1}<br>A° = conv{±bᵢ}</div></li>
+    <li class="step"><span class="n">2</span>
+      <div><h3>Build a fair measuring device</h3><p>The proof uses one special curve, a lens. Send a point around a circle at steady speed and push it through the map. Its height comes out perfectly evenly spread. An ordinary circle doesn't do this.</p><div class="see">See it: "The trick at the heart of the proof", below.</div></div>
+      <div class="term">Conformal map of the disk onto a lens with uniform boundary height (a rotation of Gross's example)</div></li>
+    <li class="step"><span class="n">3</span>
+      <div><h3>Turn geometry into chance</h3><p>For each way of choosing n of the slabs, pick random points on the lens's edge and combine them into one point. Ask: how likely is it to fit inside every other slab too? An argument from complex analysis forces these chances to add up to at least 1.</p></div>
+      <div class="term">Mass at an isolated holomorphic zero, by Stokes' theorem<br>S = Σ<sub>I</sub> P<sub>I</sub> ≥ 1</div></li>
+    <li class="step"><span class="n">4</span>
+      <div><h3>Turn chance back into volume</h3><p>Because the lens's heights are perfectly even, each chance equals the volume of a small pointed piece (a simplex) sitting inside the twin. The pieces never overlap, so together they're no bigger than the twin. Chain the two facts: 1 ≤ the chances ≤ volume × twin's volume × n!/4ⁿ.</p></div>
+      <div class="term">Real simplex identity<br>1 ≤ S = (n!/4ⁿ)∫<sub>A</sub>|Σ<sub>X</sub>| dX<br>&nbsp;&nbsp;≤ (n!/4ⁿ)|A||A°|</div></li>
+    <li class="step"><span class="n">5</span>
+      <div><h3>Find every tie</h3><p>If a shape lands exactly on the floor, every inequality above must be perfectly tight. Tracing that back gives a concrete property: in the shape's own notion of distance, any three balls that pairwise overlap share a common point. A classical theorem says only Hanner polytopes (cube-octahedron mixtures) have it.</p><div class="see">See them: "Up a dimension", below.</div></div>
+      <div class="term">Three-ball intersection property → metric medians → Hansen–Lima classification</div></li>
+  </ol>
+
+  <div class="aside">
+    <div><h3>Two more routes in the same family</h3><p>Without symmetry, triangles (simplices) are the minimizers, with floor (n+1)ⁿ⁺¹/(n!)². A separate paper proves this. A third paper reaches the symmetric result through symplectic geometry: K × K° always fits a "rigid" ball whose volume approaches 4ⁿ/n!.</p></div>
+    <div><h3>How the model got there</h3><p>Its reasoning summary shows it trying and setting aside a run of known approaches: induction on slices, entropy, Kuperberg's construction, Nazarov's Bergman kernels. A formula of Lundin then pointed it toward "boundary laws" on a planar curve, which became the lens in move 2.</p></div>
+    <div><h3>How sure is this?</h3><p>The repository reports Lean formalizations of both the symmetric and general theorems. Lean is a proof checker that verifies each step mechanically. The repo also cautions that results may still contain issues while review continues.</p></div>
+  </div>
+  </details>
+</section>
+
+<!-- ============ 1. PLAYGROUND ============ -->
+<section id="play">
+  <h2>Try it: a shape and its twin</h2>
+  <p>Draw a shape with no dents (mathematicians say <i>convex</i>) that looks the same when spun halfway around its center. Now build its <em>twin</em>, called the <i>polar</i>. Every flat edge of your shape becomes a corner of the twin, and every corner becomes an edge. Edges far from the center turn into corners close in, so a big shape has a small twin.</p>
+  <p class="muted">Multiply the shape's area by its twin's area. Mahler himself proved the floor in the flat plane: 8 for symmetric shapes. Drag the corners and try to get under it. Then switch to "Any shape" to see where triangles bottom out.</p>
+
+  <div class="toolbar">
+    <div class="seg" role="group" aria-label="Mode">
+      <button id="mode-sym" aria-pressed="true">Symmetric shapes</button>
+      <button id="mode-gen" aria-pressed="false">Any shape</button>
+    </div>
+    <div class="seg" role="group" aria-label="Presets" id="presets"></div>
+    <span class="spacer"></span>
+    <label class="slider">Stretch <input id="stretch" type="range" min="-100" max="100" value="0" aria-label="Stretch horizontally"></label>
+  </div>
+
+  <div class="pg">
+    <div class="card panel">
+      <div class="cap"><span class="label">Your shape <span class="mono">K</span></span><span class="label faint">drag corners · double-click to add</span></div>
+      <canvas id="cvK" class="stage"></canvas>
+    </div>
+    <div class="card panel">
+      <div class="cap"><span class="label">Its twin <span class="mono">K°</span></span><span class="label faint">hover either to match parts</span></div>
+      <canvas id="cvP" class="stage"></canvas>
+    </div>
+    <div class="card readout">
+      <div class="kv"><span class="label">Area of K</span><span class="mono" id="aK">–</span></div>
+      <div class="kv"><span class="label">Area of K°</span><span class="mono" id="aP">–</span></div>
+      <div class="rule"></div>
+      <div><div class="label">Product</div><div class="big" id="prod">–</div></div>
+      <div class="gauge" id="gauge"><div class="track"></div><div class="forbid" id="forbid"></div></div>
+      <div class="kv"><span class="label">Lowest you've reached</span><span class="mono" id="best">–</span></div>
+      <div class="rule"></div>
+      <div class="note" id="note"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 2. 3D ============ -->
+<section id="dims">
+  <h2>Up a dimension</h2>
+  <p>The same game works for solids, with volume in place of area. In 3D the cube and its twin, the octahedron, sit exactly on the floor. Shapes that look more like a ball score higher. A ball is its own twin and gets the highest score of all.</p>
+  <div class="legend"><span><i class="sw" style="background:#e8e8e8"></i>shape K</span><span><i class="sw" style="background:#5b50d6"></i>twin K° (scaled to interlock)</span></div>
+  <div class="tt-grid" id="tt-grid"></div>
+  <p class="label" style="margin-top:10px">3D renders made in Blender from exact polar computations. The volume products shown are measured on those meshes.</p>
+
+  <table id="dimtable" aria-label="Floors and ceilings by dimension">
+    <thead><tr><th>Dimension</th><th>Floor, symmetric<br>cube × twin</th><th>Floor, any shape<br>simplex × twin</th><th>Ceiling<br>ball × ball</th><th>Room between floor and ceiling</th></tr></thead>
+    <tbody></tbody>
+  </table>
+  <p class="label" style="margin-top:8px">The ceiling, where the ball wins, has been known since Blaschke and Santaló. The floor was the hard part. From 4D on, new minimizers appear, built by mixing "stack" and "glue" operations (for example <span class="mono">square ⊕₁ square</span>). These are the Hanner polytopes, and the papers show they are the only shapes that tie the cube.</p>
+</section>
+
+<!-- ============ 3. THE TRICK ============ -->
+<section id="trick">
+  <h2>The trick at the heart of the proof</h2>
+  <p>The proof never measures a shape directly. It turns the question into a probability, using one special curve. Spin a point around a circle at a steady speed and push it through the map below. Its <em>height</em> on the other side lands evenly between −1 and 1: every height is equally likely. Switch to "Plain circle" to see why that's unusual. On an ordinary circle, heights pile up near the top and bottom.</p>
+
+  <div class="toolbar">
+    <div class="seg" role="group" aria-label="Map">
+      <button id="map-lens" aria-pressed="true">The lens map</button>
+      <button id="map-circle" aria-pressed="false">Plain circle</button>
+    </div>
+    <button class="btn" id="lens-play">Pause</button>
+    <button class="btn" id="lens-reset">Clear histogram</button>
+  </div>
+
+  <div class="lens">
+    <div class="card panel"><div class="cap"><span class="label">Steady spin on the unit circle</span></div><canvas id="cvDisk" class="stage"></canvas></div>
+    <div class="card panel"><div class="cap"><span class="label" id="lens-cap">After the map <span class="mono">F</span></span></div><canvas id="cvLens" class="stage"></canvas></div>
+    <div class="card panel hist"><div class="cap"><span class="label">Where the heights land</span><span class="label faint mono" id="hist-n"></span></div><canvas id="cvHist" class="stage"></canvas></div>
+  </div>
+
+  <p style="margin-top:14px">Why this helps: the shape is described by slabs, one for each pair of opposite faces. The proof picks random points on the lens's edge and asks how often they line up into a point that fits inside every slab at once. A complex-analysis argument (Stokes' theorem applied to the lens map) shows those chances add up to <b style="font-weight:500">at least 1</b>. Because the heights are perfectly even, the same sum can be rewritten as volumes of pieces of the twin, and those total at most <span class="mono">|K|·|K°|·n!/4ⁿ</span>. Together: <span class="mono">|K|·|K°| ≥ 4ⁿ/n!</span>.</p>
+  <details>
+    <summary>The formula, for the curious</summary>
+    <p style="margin-top:8px">F(z) = (8/π²) · Σ<sub>j≥0</sub> (−1)<sup>j</sup> z<sup>2j+1</sup> / (2j+1)². On the circle its imaginary part is a triangle wave, which climbs at a constant rate, so uniform angles give uniform heights. The lens's half-width at height 0 is 8G/π² ≈ <span class="mono">0.7424</span>, where G is Catalan's constant (whose irrationality is result 005 in the same collection).</p>
+  </details>
+</section>
+
+<section>
+  <p class="sources">Source: <code>openai/math</code>, family 087. "The symmetric Mahler conjecture and its equality cases" and "The Mahler Conjecture for General Convex Bodies" (Sept 22, 2026), with a reasoning summary in <code>reasoning_traces/symmetric-and-general-mahler-conjectures.pdf</code>. The repository reports both theorems formalized in Lean (<code>lean/docs/087.md</code>). This page simplifies the proof idea for illustration.</p>
+</section>
+
+<script id="tt-data" type="application/json">/*TURNTABLES*/</script>
+<script>
+(function () {
+"use strict";
+const $ = (id) => document.getElementById(id);
+const css = (n) => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+let C = {};
+function readColors() {
+  C = { fg: css("--foreground"), mut: css("--muted-foreground"), faint: css("--faint-foreground"),
+        border: css("--border-strong"), hair: css("--hairline"), primary: css("--primary"), muted: css("--muted"), card: css("--card") };
+}
+readColors();
+
+function fitCanvas(cv) {
+  const r = cv.getBoundingClientRect(), d = window.devicePixelRatio || 1;
+  const w = Math.max(10, Math.round(r.width * d)), h = Math.max(10, Math.round(r.height * d));
+  if (cv.width !== w || cv.height !== h) { cv.width = w; cv.height = h; }
+  const ctx = cv.getContext("2d"); ctx.setTransform(d, 0, 0, d, 0, 0);
+  return { ctx, w: r.width, h: r.height };
+}
+function alpha(color, a) { // works for hex / rgb / oklch via color-mix
+  return `color-mix(in srgb, ${color} ${Math.round(a * 100)}%, transparent)`;
+}
+
+/* ---------------- geometry ---------------- */
+const cross = (o, a, b) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
+function hull(pts) { // monotone chain, CCW, returns indices
+  const idx = pts.map((_, i) => i).sort((i, j) => pts[i][0] - pts[j][0] || pts[i][1] - pts[j][1]);
+  if (idx.length < 3) return idx;
+  const lo = [], up = [];
+  for (const i of idx) { while (lo.length >= 2 && cross(pts[lo[lo.length - 2]], pts[lo[lo.length - 1]], pts[i]) <= 1e-12) lo.pop(); lo.push(i); }
+  for (let k = idx.length - 1; k >= 0; k--) { const i = idx[k]; while (up.length >= 2 && cross(pts[up[up.length - 2]], pts[up[up.length - 1]], pts[i]) <= 1e-12) up.pop(); up.push(i); }
+  lo.pop(); up.pop(); return lo.concat(up);
+}
+function area(poly) { let s = 0; for (let i = 0; i < poly.length; i++) { const a = poly[i], b = poly[(i + 1) % poly.length]; s += a[0] * b[1] - a[1] * b[0]; } return Math.abs(s) / 2; }
+// polar of CCW polygon about centre c. Vertex i of the polar <-> edge (i, i+1) of poly. null if c not interior.
+function polar(poly, c) {
+  const out = [];
+  for (let i = 0; i < poly.length; i++) {
+    const a = poly[i], b = poly[(i + 1) % poly.length];
+    const nx = b[1] - a[1], ny = -(b[0] - a[0]);
+    const h = nx * (a[0] - c[0]) + ny * (a[1] - c[1]);
+    if (h <= 1e-9) return null;
+    out.push([nx / h, ny / h]);
+  }
+  return out;
+}
+function santalo(poly) { // minimise |(K - z)°| over interior z, Nelder–Mead
+  const f = (z) => { const p = polar(poly, z); return p ? area(p) : Infinity; };
+  let cx = 0, cy = 0; for (const p of poly) { cx += p[0]; cy += p[1]; } cx /= poly.length; cy /= poly.length;
+  let s = [[cx, cy], [cx + 0.05, cy], [cx, cy + 0.05]].map((z) => ({ z, v: f(z) }));
+  for (let it = 0; it < 160; it++) {
+    s.sort((a, b) => a.v - b.v);
+    const [b, g, w] = s, m = [(b.z[0] + g.z[0]) / 2, (b.z[1] + g.z[1]) / 2];
+    const at = (t) => [m[0] + t * (w.z[0] - m[0]), m[1] + t * (w.z[1] - m[1])];
+    const r = at(-1), fr = f(r);
+    if (fr < b.v) { const e = at(-2), fe = f(e); s[2] = fe < fr ? { z: e, v: fe } : { z: r, v: fr }; }
+    else if (fr < g.v) s[2] = { z: r, v: fr };
+    else { const k = at(0.5), fk = f(k); if (fk < w.v) s[2] = { z: k, v: fk }; else { s[1] = { z: [(b.z[0] + g.z[0]) / 2, (b.z[1] + g.z[1]) / 2], v: 0 }; s[2] = { z: [(b.z[0] + w.z[0]) / 2, (b.z[1] + w.z[1]) / 2], v: 0 }; s[1].v = f(s[1].z); s[2].v = f(s[2].z); } }
+    if (Math.abs(s[2].v - s[0].v) < 1e-11) break;
+  }
+  s.sort((a, b) => a.v - b.v); return s[0];
+}
+const ngon = (n, r, rot = 0) => Array.from({ length: n }, (_, i) => { const t = rot + 2 * Math.PI * i / n; return [r * Math.cos(t), r * Math.sin(t)]; });
+
+/* ---------------- playground state ---------------- */
+const SYM_FLOOR = 8, GEN_FLOOR = 27 / 4, CEIL = Math.PI * Math.PI;
+const PRESETS = {
+  sym: [
+    ["Square", () => [[1, 1], [-1, 1]]],
+    ["Hexagon", () => ngon(6, 1.15, Math.PI / 6).slice(0, 3)],
+    ["Circle", () => ngon(48, 1.05).slice(0, 24)],
+    ["Lopsided", () => [[1.5, 0.35], [0.4, 1.0], [-0.7, 0.85]]],
+  ],
+  gen: [
+    ["Triangle", () => ngon(3, 1.3, Math.PI / 2)],
+    ["Square", () => [[1, 1], [-1, 1], [-1, -1], [1, -1]]],
+    ["Pentagon", () => ngon(5, 1.2, Math.PI / 2)],
+    ["Circle", () => ngon(48, 1.05)],
+    ["Kite", () => [[0, 1.5], [-0.9, 0.1], [0, -0.8], [1.1, 0.2]]],
+  ],
+};
+const S = { mode: "sym", free: [], stretch: 0, best: { sym: Infinity, gen: Infinity }, hoverEdge: -1, hoverVert: -1, drag: -1, preset: "Square", geo: null };
+const R = 2.25; // world half-width shown in each panel
+
+function fullPoints() { return S.mode === "sym" ? S.free.concat(S.free.map(([x, y]) => [-x, -y])) : S.free.slice(); }
+function compute() {
+  const pts = fullPoints(), h = hull(pts), poly = h.map((i) => pts[i]);
+  if (poly.length < 3 || area(poly) < 1e-4) { S.geo = null; return; }
+  let c = [0, 0], P;
+  if (S.mode === "gen") { const best = santalo(poly); c = best.z; P = polar(poly, c); }
+  else P = polar(poly, c);
+  if (!P) { S.geo = null; return; }
+  const aK = area(poly), aP = area(P);
+  S.geo = { pts, hullIdx: h, poly, c, P, aK, aP, prod: aK * aP };
+  S.best[S.mode] = Math.min(S.best[S.mode], S.geo.prod);
+}
+
+const cvK = $("cvK"), cvP = $("cvP");
+function view(w) { const s = w / (2 * R); return { s, X: (x) => w / 2 + x * s, Y: (y) => w / 2 - y * s, ix: (px) => (px - w / 2) / s, iy: (py) => (w / 2 - py) / s }; }
+
+function drawAxes(ctx, w, v) {
+  ctx.strokeStyle = C.hair; ctx.lineWidth = 1; ctx.beginPath();
+  ctx.moveTo(0, v.Y(0)); ctx.lineTo(w, v.Y(0)); ctx.moveTo(v.X(0), 0); ctx.lineTo(v.X(0), w); ctx.stroke();
+  ctx.strokeStyle = C.hair; ctx.setLineDash([2, 4]); ctx.beginPath(); ctx.arc(v.X(0), v.Y(0), v.s, 0, 2 * Math.PI); ctx.stroke(); ctx.setLineDash([]);
+}
+function pathPoly(ctx, poly, v) { ctx.beginPath(); poly.forEach(([x, y], i) => (i ? ctx.lineTo(v.X(x), v.Y(y)) : ctx.moveTo(v.X(x), v.Y(y)))); ctx.closePath(); }
+
+function drawPlay() {
+  const A = fitCanvas(cvK), B = fitCanvas(cvP), g = S.geo;
+  for (const { ctx, w } of [A, B]) { ctx.clearRect(0, 0, w, w); drawAxes(ctx, w, view(w)); }
+  if (!g) return;
+  const vK = view(A.w), vP = view(B.w), ck = A.ctx, cp = B.ctx;
+  const handles = g.pts.length <= 24;
+  const offsetPolar = (q) => [q[0], q[1]]; // polar drawn about its own origin (centre c maps to 0)
+  // K
+  pathPoly(ck, g.poly, vK); ck.fillStyle = alpha(C.fg, 0.08); ck.fill(); ck.strokeStyle = C.fg; ck.lineWidth = 1.5; ck.stroke();
+  // P (drawn centred at origin)
+  const Pd = g.P.map(offsetPolar);
+  pathPoly(cp, Pd, vP); cp.fillStyle = alpha(C.primary, 0.14); cp.fill(); cp.strokeStyle = C.primary; cp.lineWidth = 1.5; cp.stroke();
+  // centre marks
+  const mark = (ctx, v, x, y, col) => { ctx.fillStyle = col; ctx.beginPath(); ctx.arc(v.X(x), v.Y(y), 3, 0, 2 * Math.PI); ctx.fill(); };
+  mark(ck, vK, g.c[0], g.c[1], S.mode === "gen" ? C.primary : C.mut);
+  mark(cp, vP, 0, 0, C.mut);
+  if (S.mode === "gen") { ck.fillStyle = C.primary; ck.font = "11px " + css("--mono"); ck.fillText("Santaló point", vK.X(g.c[0]) + 6, vK.Y(g.c[1]) - 6); }
+
+  const n = g.poly.length;
+  // highlight correspondence: edge i of K <-> vertex i of P ; vertex i+1 of K <-> edge i..i+1 of P
+  const e = S.hoverEdge, vv = S.hoverVert;
+  if (e >= 0 && e < n) {
+    const a = g.poly[e], b = g.poly[(e + 1) % n];
+    // support line extended
+    const dx = b[0] - a[0], dy = b[1] - a[1], L = Math.hypot(dx, dy);
+    ck.save(); ck.setLineDash([4, 4]); ck.strokeStyle = alpha(C.primary, 0.7); ck.lineWidth = 1; ck.beginPath();
+    ck.moveTo(vK.X(a[0] - dx / L * 5), vK.Y(a[1] - dy / L * 5)); ck.lineTo(vK.X(b[0] + dx / L * 5), vK.Y(b[1] + dy / L * 5)); ck.stroke(); ck.restore();
+    ck.strokeStyle = C.primary; ck.lineWidth = 3.5; ck.beginPath(); ck.moveTo(vK.X(a[0]), vK.Y(a[1])); ck.lineTo(vK.X(b[0]), vK.Y(b[1])); ck.stroke();
+    const q = Pd[e];
+    cp.save(); cp.setLineDash([3, 3]); cp.strokeStyle = alpha(C.primary, 0.6); cp.beginPath(); cp.moveTo(vP.X(0), vP.Y(0)); cp.lineTo(vP.X(q[0]), vP.Y(q[1])); cp.stroke(); cp.restore();
+    cp.fillStyle = C.primary; cp.beginPath(); cp.arc(vP.X(q[0]), vP.Y(q[1]), 6, 0, 2 * Math.PI); cp.fill();
+  }
+  if (vv >= 0 && vv < n) {
+    const p = g.poly[vv];
+    ck.fillStyle = C.primary; ck.beginPath(); ck.arc(vK.X(p[0]), vK.Y(p[1]), 6, 0, 2 * Math.PI); ck.fill();
+    const q1 = Pd[(vv - 1 + n) % n], q2 = Pd[vv];
+    cp.strokeStyle = C.primary; cp.lineWidth = 3.5; cp.beginPath(); cp.moveTo(vP.X(q1[0]), vP.Y(q1[1])); cp.lineTo(vP.X(q2[0]), vP.Y(q2[1])); cp.stroke();
+  }
+  // handles
+  if (handles) {
+    const onHull = new Set(g.hullIdx);
+    g.pts.forEach(([x, y], i) => {
+      const mirror = S.mode === "sym" && i >= S.free.length;
+      ck.beginPath(); ck.arc(vK.X(x), vK.Y(y), mirror ? 3.5 : 5, 0, 2 * Math.PI);
+      ck.fillStyle = onHull.has(i) ? (mirror ? C.card : C.fg) : C.card; ck.fill();
+      ck.strokeStyle = onHull.has(i) ? C.fg : C.faint; ck.lineWidth = 1.25; ck.stroke();
+    });
+  }
+}
+
+function fmt(x, d = 4) { return Number.isFinite(x) ? x.toFixed(d) : "–"; }
+const GMIN = 6.25, GMAX = 10.25;
+const gpos = (x) => Math.max(0, Math.min(100, ((x - GMIN) / (GMAX - GMIN)) * 100));
+function drawGauge() {
+  const gz = $("gauge"); gz.querySelectorAll(".tick,.dot").forEach((n) => n.remove());
+  const floor = S.mode === "sym" ? SYM_FLOOR : GEN_FLOOR;
+  $("forbid").style.width = gpos(floor) + "%";
+  const ticks = S.mode === "sym" ? [[SYM_FLOOR, "8 floor"], [CEIL, "π² ball"]] : [[GEN_FLOOR, "6.75 floor"], [SYM_FLOOR, "8"], [CEIL, "π²"]];
+  for (const [x, t] of ticks) { const d = document.createElement("div"); d.className = "tick"; d.style.left = gpos(x) + "%"; const s = document.createElement("span"); s.textContent = t; d.appendChild(s); gz.appendChild(d); }
+  if (S.geo) { const d = document.createElement("div"); d.className = "dot"; d.style.left = gpos(S.geo.prod) + "%"; gz.appendChild(d); }
+}
+function setNote() {
+  const note = $("note"), g = S.geo; note.textContent = "";
+  const add = (txt, bold) => { const el = document.createElement(bold ? "b" : "span"); el.textContent = txt; note.appendChild(el); };
+  if (!g) { add("Shape too thin. Pull a corner outward."); return; }
+  const n = g.poly.length;
+  if (S.hoverEdge >= 0 && S.hoverEdge < n) {
+    const a = g.poly[S.hoverEdge], b = g.poly[(S.hoverEdge + 1) % n];
+    const nx = b[1] - a[1], ny = -(b[0] - a[0]), L = Math.hypot(nx, ny);
+    const d = (nx * (a[0] - g.c[0]) + ny * (a[1] - g.c[1])) / L;
+    add("This edge is "); add(d.toFixed(2), true); add(" from the center, so its twin corner sits at "); add((1 / d).toFixed(2), true); add(". Distances flip: d becomes 1/d.");
+    return;
+  }
+  if (S.hoverVert >= 0) { add("Each corner of K becomes an edge of the twin. The corner's two neighboring edges become the twin edge's two endpoints."); return; }
+  const floor = S.mode === "sym" ? SYM_FLOOR : GEN_FLOOR, gap = g.prod - floor;
+  if (gap < 2e-4) add(S.mode === "sym" ? "You're on the floor. Every parallelogram ties the square here. In higher dimensions the ties are exactly the Hanner polytopes." : "On the floor. Only triangles (and in n dimensions, simplices) get here.", true);
+  else if (g.prod > CEIL - 0.03) add("Near the ceiling. Round shapes score highest; the circle's π² is the maximum.");
+  else if (Math.abs(S.stretch) > 5) add("Stretching changed both areas, but not their product. That's why the answer doesn't depend on how you squish the shape.");
+  else add(S.mode === "sym" ? "Try to go below 8. The proof says you never will." : "Without symmetry the twin is built around the Santaló point, the center that makes the twin smallest. The floor drops to 27/4.");
+}
+function updatePlay() {
+  compute(); drawPlay(); drawGauge(); setNote();
+  const g = S.geo;
+  $("aK").textContent = g ? fmt(g.aK) : "–"; $("aP").textContent = g ? fmt(g.aP) : "–"; $("prod").textContent = g ? fmt(g.prod) : "–";
+  $("best").textContent = fmt(S.best[S.mode]);
+}
+
+function renderPresets() {
+  const box = $("presets"); box.textContent = "";
+  for (const [name, fn] of PRESETS[S.mode]) {
+    const b = document.createElement("button"); b.textContent = name; b.setAttribute("aria-pressed", String(name === S.preset));
+    b.addEventListener("click", () => { S.preset = name; S.free = fn(); S.stretch = 0; $("stretch").value = 0; renderPresets(); updatePlay(); });
+    box.appendChild(b);
+  }
+}
+function setMode(m) {
+  S.mode = m; $("mode-sym").setAttribute("aria-pressed", String(m === "sym")); $("mode-gen").setAttribute("aria-pressed", String(m === "gen"));
+  S.preset = PRESETS[m][0][0]; S.free = PRESETS[m][0][1](); S.stretch = 0; $("stretch").value = 0; S.hoverEdge = S.hoverVert = -1;
+  renderPresets(); updatePlay();
+}
+$("mode-sym").addEventListener("click", () => setMode("sym"));
+$("mode-gen").addEventListener("click", () => setMode("gen"));
+$("stretch").addEventListener("input", (ev) => {
+  const nv = +ev.target.value, f = Math.pow(2, (nv - S.stretch) / 100); S.stretch = nv;
+  S.free = S.free.map(([x, y]) => [x * f, y]); updatePlay();
+});
+
+function localPt(cv, ev) { const r = cv.getBoundingClientRect(); return [ev.clientX - r.left, ev.clientY - r.top, r.width]; }
+function segDist(p, a, b) { const dx = b[0] - a[0], dy = b[1] - a[1], t = Math.max(0, Math.min(1, ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / (dx * dx + dy * dy || 1))); return Math.hypot(p[0] - a[0] - t * dx, p[1] - a[1] - t * dy); }
+function hitPoint(px, py, w) {
+  const v = view(w); const pts = fullPoints(); let best = -1, bd = 14;
+  pts.forEach(([x, y], i) => { const d = Math.hypot(v.X(x) - px, v.Y(y) - py); if (d < bd) { bd = d; best = i; } });
+  return best;
+}
+cvK.addEventListener("pointerdown", (ev) => {
+  const [px, py, w] = localPt(cvK, ev); const i = hitPoint(px, py, w);
+  if (i >= 0) { S.drag = i; cvK.setPointerCapture(ev.pointerId); S.preset = ""; renderPresets(); }
+});
+cvK.addEventListener("pointermove", (ev) => {
+  const [px, py, w] = localPt(cvK, ev), v = view(w);
+  if (S.drag >= 0) {
+    let x = Math.max(-2, Math.min(2, v.ix(px))), y = Math.max(-2, Math.min(2, v.iy(py)));
+    let i = S.drag;
+    if (S.mode === "sym") {
+      const half = S.free.length; if (i >= half) { i -= half; x = -x; y = -y; }
+      const r = Math.hypot(x, y); if (r < 0.25) { x *= 0.25 / (r || 1); y *= 0.25 / (r || 1); }
+    }
+    S.free[i] = [x, y]; updatePlay(); return;
+  }
+  // hover
+  const g = S.geo; S.hoverEdge = S.hoverVert = -1;
+  if (g) {
+    const p = [px, py], P = g.poly.map(([x, y]) => [v.X(x), v.Y(y)]);
+    let bv = 10, be = 8;
+    P.forEach((q, i) => { const d = Math.hypot(q[0] - px, q[1] - py); if (d < bv) { bv = d; S.hoverVert = i; } });
+    if (S.hoverVert < 0) P.forEach((q, i) => { const d = segDist(p, q, P[(i + 1) % P.length]); if (d < be) { be = d; S.hoverEdge = i; } });
+  }
+  drawPlay(); setNote();
+});
+const endDrag = () => { S.drag = -1; };
+cvK.addEventListener("pointerup", endDrag); cvK.addEventListener("pointercancel", endDrag);
+cvK.addEventListener("pointerleave", () => { if (S.drag < 0) { S.hoverEdge = S.hoverVert = -1; drawPlay(); setNote(); } });
+cvK.addEventListener("dblclick", (ev) => {
+  const [px, py, w] = localPt(cvK, ev), v = view(w); let x = v.ix(px), y = v.iy(py);
+  if (S.free.length >= 24) return;
+  if (S.mode === "sym" && Math.hypot(x, y) < 0.25) return;
+  S.free.push([x, y]); S.preset = ""; renderPresets(); updatePlay();
+});
+cvP.addEventListener("pointermove", (ev) => {
+  const g = S.geo; if (!g) return;
+  const [px, py, w] = localPt(cvP, ev), v = view(w), P = g.P.map(([x, y]) => [v.X(x), v.Y(y)]), n = P.length;
+  S.hoverEdge = S.hoverVert = -1; let bv = 10, be = 8, eh = -1;
+  P.forEach((q, i) => { const d = Math.hypot(q[0] - px, q[1] - py); if (d < bv) { bv = d; S.hoverEdge = i; } }); // polar vertex i <-> K edge i
+  if (S.hoverEdge < 0) P.forEach((q, i) => { const d = segDist([px, py], q, P[(i + 1) % n]); if (d < be) { be = d; eh = i; } });
+  if (eh >= 0) S.hoverVert = (eh + 1) % n; // polar edge i..i+1 <-> K vertex i+1
+  drawPlay(); setNote();
+});
+cvP.addEventListener("pointerleave", () => { S.hoverEdge = S.hoverVert = -1; drawPlay(); setNote(); });
+
+/* ---------------- turntables ---------------- */
+let TT = [];
+try { const raw = $("tt-data").textContent.trim(); TT = raw.startsWith("[") ? JSON.parse(raw) : []; } catch (e) { TT = []; }
+const grid = $("tt-grid");
+if (!TT.length) grid.hidden = true;
+for (const t of TT) {
+  const card = document.createElement("div"); card.className = "card tt";
+  const cap = document.createElement("div"); cap.className = "cap"; cap.style.display = "flex"; cap.style.justifyContent = "space-between"; cap.style.alignItems = "baseline";
+  const l = document.createElement("span"); l.className = "label"; l.textContent = t.title;
+  const r = document.createElement("span"); r.className = "mono"; r.textContent = t.product;
+  cap.append(l, r);
+  const v = document.createElement("div"); v.className = "view"; v.setAttribute("role", "slider"); v.setAttribute("aria-label", t.title + ", drag to rotate"); v.tabIndex = 0;
+  const img = document.createElement("img"); img.alt = t.title; img.src = t.frames[0]; img.draggable = false;
+  const hint = document.createElement("div"); hint.className = "hint"; hint.textContent = "drag to rotate";
+  v.append(img, hint);
+  const sub = document.createElement("div"); sub.className = "label"; sub.style.marginTop = "6px"; sub.textContent = t.caption;
+  card.append(cap, v, sub); grid.appendChild(card);
+  // preload
+  t.frames.forEach((s) => { const im = new Image(); im.src = s; });
+  let f = 0, startX = 0, startF = 0, dragging = false, auto = !reduceMotion;
+  const show = (k) => { f = ((Math.round(k) % t.frames.length) + t.frames.length) % t.frames.length; img.src = t.frames[f]; };
+  v.addEventListener("pointerdown", (e) => { dragging = true; auto = false; hint.hidden = true; startX = e.clientX; startF = f; v.setPointerCapture(e.pointerId); });
+  v.addEventListener("pointermove", (e) => { if (dragging) show(startF - (e.clientX - startX) / 8); });
+  v.addEventListener("pointerup", () => { dragging = false; });
+  v.addEventListener("keydown", (e) => { if (e.key === "ArrowLeft") { auto = false; show(f - 1); } if (e.key === "ArrowRight") { auto = false; show(f + 1); } });
+  if (auto) { let last = 0; const tick = (ts) => { if (!auto) return; if (ts - last > 110) { last = ts; show(f + 1); } requestAnimationFrame(tick); }; requestAnimationFrame(tick); }
+}
+
+/* ---------------- dimension table ---------------- */
+function gammaHalf(k) { // Γ(k/2) for positive integer k
+  if (k === 1) return Math.sqrt(Math.PI); if (k === 2) return 1; return (k / 2 - 1) * gammaHalf(k - 2);
+}
+const fact = (n) => (n <= 1 ? 1 : n * fact(n - 1));
+const tb = $("dimtable").querySelector("tbody");
+for (let n = 1; n <= 8; n++) {
+  const sym = Math.pow(4, n) / fact(n), gen = Math.pow(n + 1, n + 1) / (fact(n) * fact(n)), ball = Math.pow(Math.pow(Math.PI, n / 2) / gammaHalf(n + 2), 2);
+  const tr = document.createElement("tr");
+  const cells = [String(n), sym.toFixed(3), gen.toFixed(3), ball.toFixed(3)];
+  cells.forEach((c) => { const td = document.createElement("td"); td.textContent = c; tr.appendChild(td); });
+  const td = document.createElement("td"); td.className = "barcell"; const bar = document.createElement("div"); bar.className = "bar";
+  const ratio = ball / sym; const i = document.createElement("i"); i.style.width = Math.min(100, (Math.log(ratio + 1e-9) / Math.log(40)) * 100) + "%"; i.style.background = alpha(C.primary, 0.55);
+  bar.appendChild(i); td.title = `ball is ${ratio.toFixed(2)}× the floor`; td.appendChild(bar);
+  const lab = document.createElement("div"); lab.className = "label"; lab.style.textAlign = "right"; lab.textContent = `${ratio.toFixed(2)}×`;
+  td.appendChild(lab); tr.appendChild(td); tb.appendChild(tr);
+}
+
+/* ---------------- lens ---------------- */
+const NT = 1440, TERMS = 400, LENS = new Float64Array(NT * 2);
+for (let k = 0; k < NT; k++) {
+  const th = (2 * Math.PI * k) / NT; let re = 0, im = 0;
+  for (let j = 0; j < TERMS; j++) { const m = 2 * j + 1, s = (j % 2 ? -1 : 1) / (m * m); re += s * Math.cos(m * th); im += s * Math.sin(m * th); }
+  LENS[2 * k] = (8 / (Math.PI * Math.PI)) * re; LENS[2 * k + 1] = (8 / (Math.PI * Math.PI)) * im;
+}
+function Fr(r, th) { let re = 0, im = 0, rp = r; for (let j = 0; j < 60; j++) { const m = 2 * j + 1, s = (j % 2 ? -1 : 1) / (m * m); re += s * rp * Math.cos(m * th); im += s * rp * Math.sin(m * th); rp *= r * r; } return [(8 / (Math.PI * Math.PI)) * re, (8 / (Math.PI * Math.PI)) * im]; }
+const INNER = [0.35, 0.65, 0.9].map((r) => Array.from({ length: 241 }, (_, k) => Fr(r, (2 * Math.PI * k) / 240)));
+const L = { map: "lens", theta: 0, playing: !reduceMotion, bins: new Float64Array(30), n: 0 };
+const imageOf = (th) => {
+  if (L.map === "circle") return [Math.cos(th), Math.sin(th)];
+  const k = Math.round((((th % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI)) / (2 * Math.PI) * NT) % NT;
+  return [LENS[2 * k], LENS[2 * k + 1]];
+};
+function drawLens() {
+  const D = fitCanvas($("cvDisk")), E = fitCanvas($("cvLens")), H = fitCanvas($("cvHist"));
+  const RR = 1.35;
+  const vw = (w) => { const s = w / (2 * RR); return { X: (x) => w / 2 + x * s, Y: (y) => w / 2 - y * s, s }; };
+  // disk
+  { const { ctx, w } = D, v = vw(w); ctx.clearRect(0, 0, w, w);
+    ctx.strokeStyle = C.hair; ctx.beginPath(); ctx.moveTo(0, v.Y(0)); ctx.lineTo(w, v.Y(0)); ctx.moveTo(v.X(0), 0); ctx.lineTo(v.X(0), w); ctx.stroke();
+    [0.35, 0.65, 0.9].forEach((r) => { ctx.strokeStyle = alpha(C.mut, 0.35); ctx.beginPath(); ctx.arc(v.X(0), v.Y(0), r * v.s, 0, 2 * Math.PI); ctx.stroke(); });
+    ctx.strokeStyle = C.fg; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(v.X(0), v.Y(0), v.s, 0, 2 * Math.PI); ctx.stroke(); ctx.lineWidth = 1;
+    const x = Math.cos(L.theta), y = Math.sin(L.theta);
+    ctx.strokeStyle = alpha(C.primary, 0.5); ctx.beginPath(); ctx.moveTo(v.X(0), v.Y(0)); ctx.lineTo(v.X(x), v.Y(y)); ctx.stroke();
+    ctx.fillStyle = C.primary; ctx.beginPath(); ctx.arc(v.X(x), v.Y(y), 5, 0, 2 * Math.PI); ctx.fill();
+  }
+  // image
+  const [ix, iy] = imageOf(L.theta);
+  { const { ctx, w } = E, v = vw(w); ctx.clearRect(0, 0, w, w);
+    ctx.strokeStyle = C.hair; ctx.beginPath(); ctx.moveTo(0, v.Y(0)); ctx.lineTo(w, v.Y(0)); ctx.moveTo(v.X(0), 0); ctx.lineTo(v.X(0), w); ctx.stroke();
+    ctx.setLineDash([2, 4]); [1, -1].forEach((yy) => { ctx.beginPath(); ctx.moveTo(0, v.Y(yy)); ctx.lineTo(w, v.Y(yy)); ctx.stroke(); }); ctx.setLineDash([]);
+    if (L.map === "lens") {
+      INNER.forEach((c) => { ctx.strokeStyle = alpha(C.mut, 0.35); ctx.beginPath(); c.forEach(([x, y], k) => (k ? ctx.lineTo(v.X(x), v.Y(y)) : ctx.moveTo(v.X(x), v.Y(y)))); ctx.stroke(); });
+      ctx.fillStyle = alpha(C.primary, 0.08); ctx.strokeStyle = C.fg; ctx.lineWidth = 1.5; ctx.beginPath();
+      for (let k = 0; k <= NT; k++) { const kk = k % NT, x = LENS[2 * kk], y = LENS[2 * kk + 1]; k ? ctx.lineTo(v.X(x), v.Y(y)) : ctx.moveTo(v.X(x), v.Y(y)); }
+      ctx.fill(); ctx.stroke(); ctx.lineWidth = 1;
+    } else {
+      ctx.fillStyle = alpha(C.fg, 0.05); ctx.strokeStyle = C.fg; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(v.X(0), v.Y(0), v.s, 0, 2 * Math.PI); ctx.fill(); ctx.stroke(); ctx.lineWidth = 1;
+    }
+    ctx.strokeStyle = alpha(C.primary, 0.55); ctx.setLineDash([3, 3]); ctx.beginPath(); ctx.moveTo(v.X(ix), v.Y(iy)); ctx.lineTo(w, v.Y(iy)); ctx.stroke(); ctx.setLineDash([]);
+    ctx.fillStyle = C.primary; ctx.beginPath(); ctx.arc(v.X(ix), v.Y(iy), 5, 0, 2 * Math.PI); ctx.fill();
+    ctx.fillStyle = C.mut; ctx.font = "11px " + css("--mono"); ctx.fillText("height +1", 4, v.Y(1) - 4); ctx.fillText("height −1", 4, v.Y(-1) + 13);
+  }
+  // histogram: bins along the vertical axis aligned with the lens's heights
+  { const { ctx, w } = H, v = vw(w); ctx.clearRect(0, 0, w, w);
+    const nb = L.bins.length, top = v.Y(1), bot = v.Y(-1), bh = (bot - top) / nb;
+    const max = Math.max(1e-9, ...L.bins), expected = L.n / nb;
+    const scaleMax = Math.max(max, expected * 1.6, 1);
+    const x0 = 8, wmax = w - 16;
+    for (let b = 0; b < nb; b++) { const y = bot - (b + 1) * bh, len = (L.bins[b] / scaleMax) * wmax; ctx.fillStyle = alpha(C.primary, 0.55); ctx.fillRect(x0, y + 1, len, Math.max(1, bh - 2)); }
+    if (L.n > 0) { ctx.strokeStyle = C.fg; ctx.setLineDash([4, 3]); const ex = x0 + (expected / scaleMax) * wmax; ctx.beginPath(); ctx.moveTo(ex, top); ctx.lineTo(ex, bot); ctx.stroke(); ctx.setLineDash([]);
+      ctx.fillStyle = C.mut; ctx.font = "11px " + css("--mono"); ctx.fillText("perfectly even", Math.min(ex + 4, w - 92), top - 6); }
+    ctx.strokeStyle = C.hair; ctx.beginPath(); ctx.moveTo(x0, top); ctx.lineTo(x0, bot); ctx.stroke();
+    ctx.strokeStyle = alpha(C.primary, 0.55); ctx.setLineDash([3, 3]); ctx.beginPath(); ctx.moveTo(0, v.Y(iy)); ctx.lineTo(w, v.Y(iy)); ctx.stroke(); ctx.setLineDash([]);
+  }
+  $("hist-n").textContent = L.n ? L.n.toLocaleString() + " samples" : "";
+  $("lens-cap").textContent = L.map === "lens" ? "After the map F: the lens" : "Plain circle: height = sin(angle)";
+}
+function sample(k) {
+  for (let i = 0; i < k; i++) { const th = Math.random() * 2 * Math.PI, y = imageOf(th)[1]; let b = Math.floor(((y + 1) / 2) * L.bins.length); b = Math.max(0, Math.min(L.bins.length - 1, b)); L.bins[b]++; L.n++; }
+}
+function resetHist() { L.bins.fill(0); L.n = 0; }
+$("map-lens").addEventListener("click", () => { L.map = "lens"; $("map-lens").setAttribute("aria-pressed", "true"); $("map-circle").setAttribute("aria-pressed", "false"); resetHist(); if (!L.playing) sample(4000); drawLens(); });
+$("map-circle").addEventListener("click", () => { L.map = "circle"; $("map-circle").setAttribute("aria-pressed", "true"); $("map-lens").setAttribute("aria-pressed", "false"); resetHist(); if (!L.playing) sample(4000); drawLens(); });
+$("lens-play").addEventListener("click", () => { L.playing = !L.playing; $("lens-play").textContent = L.playing ? "Pause" : "Play"; if (L.playing) loop(); });
+$("lens-reset").addEventListener("click", () => { resetHist(); drawLens(); });
+$("lens-play").textContent = L.playing ? "Pause" : "Play";
+let lensVisible = true;
+if ("IntersectionObserver" in window) new IntersectionObserver((es) => { lensVisible = es[0].isIntersecting; if (lensVisible && L.playing) loop(); }).observe($("trick"));
+let looping = false;
+function loop() {
+  if (looping) return; looping = true;
+  const step = () => {
+    if (!L.playing || !lensVisible) { looping = false; return; }
+    L.theta += 0.012; if (L.n < 60000) sample(30); drawLens(); requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
+}
+if (!L.playing) sample(4000);
+
+/* ---------------- proof fold ---------------- */
+const fold = $("proof-fold");
+const syncFold = () => { fold.querySelector(".fold-hint").textContent = fold.open ? "hide" : "5 moves · show"; };
+fold.addEventListener("toggle", syncFold); syncFold();
+
+/* ---------------- boot ---------------- */
+function redrawAll() { readColors(); drawPlay(); drawLens(); }
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => { redrawAll(); });
+new ResizeObserver(() => { drawPlay(); drawLens(); }).observe(document.body);
+setMode("sym");
+drawLens(); if (L.playing) loop();
+// The surface SDK is present on the trace page; this page doesn't need trace data, but keep the handshake harmless.
+if (window.traces && typeof window.traces.getTrace === "function") { window.traces.getTrace().catch(() => {}); }
+})();
+</script>
+</body>
+</html>
